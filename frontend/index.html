@@ -1,0 +1,1064 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Gen G Pulse</title>
+
+<style>
+:root{
+  color-scheme:light dark;
+  --bg:light-dark(#f7f8fc,#0b1020);
+  --surface:light-dark(#fff,#12192b);
+  --surface2:light-dark(#f0f3f9,#192238);
+  --text:light-dark(#101426,#f5f7ff);
+  --muted:light-dark(#667085,#a9b3ca);
+  --border:light-dark(#e4e8f0,#27324a);
+  --accent:#6957ff;
+  --accent2:#19b89a;
+  --danger:#ef6b78
+}
+
+*{box-sizing:border-box}
+
+html,body{
+  margin:0;
+  min-height:100%;
+  font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif;
+  background:var(--bg);
+  color:var(--text)
+}
+
+button,input{font:inherit}
+
+.app{
+  min-height:100vh;
+  background:var(--bg)
+}
+
+header{
+  position:sticky;
+  top:0;
+  z-index:20;
+  border-bottom:1px solid var(--border);
+  background:color-mix(in srgb,var(--surface) 92%,transparent);
+  backdrop-filter:blur(14px)
+}
+
+.nav{
+  max-width:1180px;
+  margin:auto;
+  padding:16px 22px;
+  display:flex;
+  align-items:center;
+  gap:24px
+}
+
+.brand{
+  font-weight:900;
+  letter-spacing:-.04em;
+  font-size:21px;
+  display:flex;
+  align-items:center;
+  gap:9px
+}
+
+.pulse{
+  width:32px;
+  height:32px;
+  border-radius:10px;
+  background:var(--accent);
+  display:grid;
+  place-items:center;
+  color:white
+}
+
+.navlinks{
+  display:flex;
+  gap:7px;
+  margin-left:auto
+}
+
+.navlinks button{
+  border:0;
+  background:transparent;
+  color:var(--muted);
+  padding:9px 12px;
+  border-radius:10px;
+  cursor:pointer
+}
+
+.navlinks button.active,
+.navlinks button:hover{
+  background:var(--surface2);
+  color:var(--text)
+}
+
+.profile{
+  border:1px solid var(--border);
+  background:var(--surface);
+  padding:8px 11px;
+  border-radius:12px;
+  cursor:pointer
+}
+
+main{
+  max-width:1180px;
+  margin:auto;
+  padding:34px 22px 60px
+}
+
+.hero{
+  display:grid;
+  grid-template-columns:1.35fr .65fr;
+  gap:22px;
+  align-items:stretch
+}
+
+.heroCard{
+  background:linear-gradient(135deg,#171c38,#30265f);
+  border-radius:28px;
+  padding:38px;
+  color:#fff;
+  position:relative;
+  overflow:hidden
+}
+
+.heroCard:after{
+  content:"";
+  position:absolute;
+  width:240px;
+  height:240px;
+  border-radius:50%;
+  right:-80px;
+  top:-80px;
+  background:#8f82ff44
+}
+
+.eyebrow{
+  text-transform:uppercase;
+  letter-spacing:.14em;
+  font-size:11px;
+  font-weight:800;
+  color:#bcb5ff
+}
+
+.hero h1{
+  font-size:clamp(36px,5vw,64px);
+  line-height:.98;
+  margin:12px 0 16px;
+  letter-spacing:-.06em;
+  max-width:700px
+}
+
+.hero p{
+  color:#d4d7e8;
+  max-width:650px;
+  line-height:1.55;
+  font-size:16px
+}
+
+.cta{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  margin-top:24px
+}
+
+.btn{
+  border:0;
+  border-radius:12px;
+  padding:12px 16px;
+  font-weight:800;
+  cursor:pointer
+}
+
+.primary{
+  background:#fff;
+  color:#17162d
+}
+
+.secondary{
+  background:#ffffff18;
+  color:#fff;
+  border:1px solid #ffffff2b
+}
+
+.statCard{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:28px;
+  padding:25px;
+  display:flex;
+  flex-direction:column;
+  justify-content:space-between
+}
+
+.stat{
+  font-size:42px;
+  font-weight:900;
+  letter-spacing:-.05em
+}
+
+.statCard p{
+  color:var(--muted);
+  line-height:1.5
+}
+
+.mini{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap
+}
+
+.chip{
+  font-size:12px;
+  padding:7px 9px;
+  border-radius:99px;
+  background:var(--surface2);
+  color:var(--muted)
+}
+
+.section{
+  margin-top:30px
+}
+
+.sectionHead{
+  display:flex;
+  justify-content:space-between;
+  align-items:end;
+  margin-bottom:14px
+}
+
+.sectionHead h2{
+  margin:0;
+  font-size:24px;
+  letter-spacing:-.03em
+}
+
+.sectionHead p{
+  margin:4px 0 0;
+  color:var(--muted);
+  font-size:14px
+}
+
+.filters{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap
+}
+
+.filter{
+  padding:9px 12px;
+  border:1px solid var(--border);
+  background:var(--surface);
+  color:var(--muted);
+  border-radius:10px;
+  cursor:pointer
+}
+
+.filter.active{
+  background:var(--accent);
+  border-color:var(--accent);
+  color:#fff
+}
+
+.cards{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:14px
+}
+
+.card{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:20px;
+  padding:18px;
+  transition:.2s
+}
+
+.card:hover{
+  transform:translateY(-2px);
+  border-color:#8276ff
+}
+
+.tag{
+  font-size:11px;
+  font-weight:900;
+  text-transform:uppercase;
+  letter-spacing:.08em;
+  color:var(--accent)
+}
+
+.card h3{
+  font-size:18px;
+  line-height:1.25;
+  margin:9px 0
+}
+
+.card p{
+  color:var(--muted);
+  font-size:14px;
+  line-height:1.5;
+  margin:0 0 15px
+}
+
+.meta{
+  font-size:12px;
+  color:var(--muted);
+  display:flex;
+  justify-content:space-between
+}
+
+.action{
+  margin-top:15px;
+  width:100%;
+  padding:10px;
+  border:1px solid var(--border);
+  background:var(--surface2);
+  color:var(--text);
+  border-radius:10px;
+  font-weight:750;
+  cursor:pointer
+}
+
+.action:hover{
+  background:var(--accent);
+  color:#fff
+}
+
+.explain{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:14px
+}
+
+.explain .card{
+  min-height:190px
+}
+
+.why{
+  border-left:4px solid var(--accent);
+  padding-left:14px
+}
+
+.opps{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:14px
+}
+
+.opp{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:20px;
+  padding:20px
+}
+
+.oppIcon{
+  font-size:28px
+}
+
+.opp h3{
+  margin:9px 0 6px
+}
+
+.opp p{
+  color:var(--muted);
+  font-size:14px;
+  line-height:1.45
+}
+
+.apply{
+  width:100%;
+  border:0;
+  border-radius:10px;
+  padding:10px;
+  background:var(--accent2);
+  color:#071b16;
+  font-weight:900;
+  cursor:pointer
+}
+
+.search{
+  display:flex;
+  gap:8px;
+  margin-bottom:14px
+}
+
+.search input{
+  flex:1;
+  border:1px solid var(--border);
+  background:var(--surface);
+  color:var(--text);
+  border-radius:12px;
+  padding:12px 14px;
+  outline:none
+}
+
+.search input:focus{
+  border-color:var(--accent)
+}
+
+.empty{
+  display:none;
+  padding:30px;
+  text-align:center;
+  color:var(--muted);
+  border:1px dashed var(--border);
+  border-radius:16px
+}
+
+.modal{
+  position:fixed;
+  inset:0;
+  background:#0008;
+  display:none;
+  place-items:center;
+  padding:20px;
+  z-index:50
+}
+
+.modal.show{
+  display:grid
+}
+
+.modalBox{
+  max-width:560px;
+  width:100%;
+  max-height:90vh;
+  overflow-y:auto;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:22px;
+  padding:24px;
+  box-shadow:0 25px 70px #0005
+}
+
+.close{
+  float:right;
+  border:0;
+  background:var(--surface2);
+  color:var(--text);
+  border-radius:9px;
+  padding:7px 10px;
+  cursor:pointer
+}
+
+.modalBox h2{
+  margin-top:4px
+}
+
+.modalBox p{
+  color:var(--muted);
+  line-height:1.6
+}
+
+.modalBox input{
+  width:100%;
+  border:1px solid var(--border);
+  background:var(--surface);
+  color:var(--text);
+  border-radius:10px;
+  padding:12px;
+  margin:8px 0
+}
+
+.toast{
+  position:fixed;
+  bottom:22px;
+  left:50%;
+  transform:translateX(-50%) translateY(20px);
+  opacity:0;
+  background:#111827;
+  color:white;
+  padding:11px 15px;
+  border-radius:11px;
+  transition:.25s;
+  z-index:60
+}
+
+.toast.show{
+  opacity:1;
+  transform:translateX(-50%) translateY(0)
+}
+
+footer{
+  border-top:1px solid var(--border);
+  padding:25px 22px;
+  color:var(--muted);
+  text-align:center;
+  font-size:13px
+}
+
+@media(max-width:800px){
+  .hero{
+    grid-template-columns:1fr
+  }
+
+  .cards,
+  .opps{
+    grid-template-columns:1fr 1fr
+  }
+
+  .navlinks{
+    display:none
+  }
+
+  .nav{
+    justify-content:space-between
+  }
+
+  .explain{
+    grid-template-columns:1fr
+  }
+}
+
+@media(max-width:520px){
+  main{
+    padding:22px 14px 45px
+  }
+
+  .heroCard{
+    padding:25px
+  }
+
+  .cards,
+  .opps{
+    grid-template-columns:1fr
+  }
+
+  .hero h1{
+    font-size:42px
+  }
+
+  .statCard{
+    min-height:190px
+  }
+}
+</style>
+</head>
+
+<body>
+
+<div class="app" id="app">
+
+<header>
+<nav class="nav">
+
+<div class="brand">
+<span class="pulse">G</span>
+Gen G Pulse
+</div>
+
+<div class="navlinks">
+<button class="active" data-target="home">Home</button>
+<button data-target="flash">Gen G Flash</button>
+<button data-target="explain">Gen G Explain</button>
+<button data-target="opportunity">Opportunities</button>
+<button data-target="saved">Saved</button>
+</div>
+
+<div style="display:flex;align-items:center;gap:8px;margin-left:8px">
+
+<button
+class="profile"
+onclick="showAccount('signin')">
+Sign in
+</button>
+
+<button
+class="btn"
+style="background:var(--accent);color:#fff;padding:9px 13px"
+onclick="showAccount('subscribe')">
+Subscribe
+</button>
+
+<button
+class="profile"
+onclick="showModal('profile')">
+👤
+</button>
+
+</div>
+
+</nav>
+</header>
+
+
+<main id="home">
+
+<section class="hero">
+
+<div class="heroCard">
+
+<div class="eyebrow">
+Your daily information companion
+</div>
+
+<h1>
+Stay informed without feeling overwhelmed.
+</h1>
+
+<p>
+Gen G Pulse turns important news, government updates and opportunities
+into simple, useful information for Gen-Z.
+</p>
+
+<div class="cta">
+
+<button
+class="btn primary"
+onclick="scrollToId('flash')">
+Explore today’s pulse →
+</button>
+
+<button
+class="btn secondary"
+onclick="showModal('how')">
+How it works
+</button>
+
+</div>
+
+</div>
+
+
+<div class="statCard">
+
+<div>
+
+<div
+class="eyebrow"
+style="color:var(--accent)">
+Today
+</div>
+
+<div class="stat">
+12
+</div>
+
+<p>
+high-value updates selected for clarity, relevance and actionability.
+</p>
+
+</div>
+
+<div class="mini">
+
+<span class="chip">News</span>
+<span class="chip">Schemes</span>
+<span class="chip">Jobs</span>
+<span class="chip">Events</span>
+
+</div>
+
+</div>
+
+</section>
+
+
+<section class="section" id="flash">
+
+<div class="sectionHead">
+
+<div>
+
+<h2>Gen G Flash</h2>
+
+<p>
+Quick updates. No endless scrolling.
+</p>
+
+</div>
+
+</div>
+
+
+<div class="search">
+
+<input
+id="search"
+placeholder="Search today's pulse…">
+
+</div>
+
+
+<div class="filters">
+
+<button
+class="filter active"
+onclick="setFilter('All',this)">
+All
+</button>
+
+<button
+class="filter"
+onclick="setFilter('India',this)">
+India
+</button>
+
+<button
+class="filter"
+onclick="setFilter('Tech',this)">
+Tech
+</button>
+
+<button
+class="filter"
+onclick="setFilter('Career',this)">
+Career
+</button>
+
+<button
+class="filter"
+onclick="setFilter('Education',this)">
+Education
+</button>
+
+</div>
+
+<br>
+
+<div
+class="cards"
+id="flashCards">
+</div>
+
+<div
+class="empty"
+id="empty">
+No matching updates found.
+</div>
+
+</section>
+
+
+<section class="section" id="explain">
+
+<div class="sectionHead">
+
+<div>
+
+<h2>Gen G Explain</h2>
+
+<p>
+What happened → Why it matters → What you should know.
+</p>
+
+</div>
+
+</div>
+
+
+<div class="explain">
+
+<article class="card">
+
+<span class="tag">
+Government & policy
+</span>
+
+<h3>
+A new public programme was announced.
+What should a student care about?
+</h3>
+
+<div class="why">
+
+<strong>
+Why it matters
+</strong>
+
+<p>
+Policy changes can affect education, jobs, applications and everyday
+opportunities. Gen G Pulse converts formal announcements into
+plain-language takeaways.
+</p>
+
+</div>
+
+<button
+class="action"
+onclick="showModal('explain')">
+Read explanation
+</button>
+
+</article>
+
+
+<article class="card">
+
+<span class="tag">
+Fact or opinion?
+</span>
+
+<h3>
+How to read a viral claim before sharing it
+</h3>
+
+<div class="why">
+
+<strong>
+Quick check
+</strong>
+
+<p>
+Look for the original source, date, evidence and whether multiple
+credible sources report the same claim.
+</p>
+
+</div>
+
+<button
+class="action"
+onclick="showModal('trust')">
+See trust checklist
+</button>
+
+</article>
+
+</div>
+
+</section>
+
+
+<section class="section" id="opportunity">
+
+<div class="sectionHead">
+
+<div>
+
+<h2>
+Gen G Opportunity
+</h2>
+
+<p>
+Information becomes useful when you can act on it.
+</p>
+
+</div>
+
+</div>
+
+
+<div class="opps">
+
+<article class="opp">
+
+<div class="oppIcon">🎓</div>
+
+<h3>
+Scholarship application
+</h3>
+
+<p>
+Explore a sample student opportunity and keep the application deadline visible.
+</p>
+
+<button
+class="apply"
+onclick="toast('Demo: opening scholarship application')">
+Apply →
+</button>
+
+</article>
+
+
+<article class="opp">
+
+<div class="oppIcon">💼</div>
+
+<h3>
+Campus opportunity
+</h3>
+
+<p>
+Find a sample internship, competition or event matched to your interests.
+</p>
+
+<button
+class="apply"
+onclick="toast('Demo: opening opportunity')">
+Connect →
+</button>
+
+</article>
+
+
+<article class="opp">
+
+<div class="oppIcon">📅</div>
+
+<h3>
+Student event
+</h3>
+
+<p>
+See an event, understand why it is relevant and save it for later.
+</p>
+
+<button
+class="apply"
+onclick="toast('Demo: event saved')">
+Attend →
+</button>
+
+</article>
+
+</div>
+
+</section>
+
+
+<section class="section" id="saved">
+
+<div class="sectionHead">
+
+<div>
+
+<h2>
+Saved for later
+</h2>
+
+<p>
+Keep useful stories and opportunities in one place.
+</p>
+
+</div>
+
+</div>
+
+
+<div class="card">
+
+<h3>
+Your saved items
+</h3>
+
+<p id="savedText">
+Nothing saved yet. Use the Save button on a story to build your personal pulse.
+</p>
+
+<div id="savedList"></div>
+
+</div>
+
+</section>
+
+
+<section class="section">
+
+<div
+class="card"
+style="display:flex;justify-content:space-between;gap:20px;align-items:center;flex-wrap:wrap">
+
+<div>
+
+<span class="tag">
+Built around trust
+</span>
+
+<h3>
+AI helps process information. Humans keep the final check.
+</h3>
+
+<p style="margin:0">
+Proposed workflow:
+Find News → AI Summarization → Human Verification →
+Relevance Check → Personalization → Publish → Notify →
+User Action → Feedback.
+</p>
+
+</div>
+
+<button
+class="action"
+style="width:auto;padding:12px 18px"
+onclick="showModal('workflow')">
+View workflow
+</button>
+
+</div>
+
+</section>
+
+
+<section class="section">
+
+<div class="card">
+
+<span class="tag">
+About Gen G Pulse
+</span>
+
+<h2>
+Understand what matters. Act when it matters.
+</h2>
+
+<p>
+Gen G Pulse is designed for Gen-Z students and young professionals
+who want important information without information overload.
+The full platform can combine credible sources, AI-assisted processing,
+human verification, personalization and actionable opportunities.
+</p>
+
+<div class="mini">
+
+<span class="chip">Credible sources</span>
+<span class="chip">Human verified</span>
+<span class="chip">Personalized</span>
+<span class="chip">Actionable</span>
+
+</div>
+
+</div>
+
+</section>
+
+</main>
+
+
+<footer>
+Gen G Pulse · A focused prototype for Gen-Z news understanding ·
+Information → Explanation → Relevance → Action
+</footer>
+
+</div>
+
+
+<!-- MAIN MODAL -->
+<div
+class="modal"
+id="modal">
+
+<div class="modalBox">
+
+<button
+class="close"
+onclick="closeModal()">
+✕
+</button>
+
+<div id="modalContent"></div>
+
+</div>
+
+</div>
+
+
+<!-- TOAST -->
+<div
+class="toast"
+id="toast">
+</div>
+
+
+<!-- RAZORPAY CHECKOUT -->
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+
+<!-- YOUR REAL FRONTEND JAVASCRIPT -->
+<script src="script.js"></script>
+
+</body>
+</html>

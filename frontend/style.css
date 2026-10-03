@@ -1,0 +1,79 @@
+```css
+/* =====================================================
+   GEN G NEWS MODAL
+   ===================================================== */
+
+.news-source-box {
+    margin-top: 18px;
+    padding: 14px 16px;
+    border-radius: 14px;
+    background: #f4f6f8;
+    color: #333;
+    font-size: 14px;
+}
+
+
+/* =====================================================
+   AI SUMMARY BLOCKS
+   ===================================================== */
+
+.ai-summary-block {
+    margin-bottom: 16px;
+    padding: 16px 18px;
+    border-radius: 14px;
+    background: #f7f8fa;
+    border: 1px solid #e7e9ed;
+}
+
+.ai-summary-block h3 {
+    margin: 0 0 8px 0;
+    font-size: 16px;
+}
+
+.ai-summary-block p {
+    margin: 0;
+    line-height: 1.65;
+    color: #444;
+}
+
+
+/* =====================================================
+   NEWS IMAGE
+   ===================================================== */
+
+.news-card-image {
+    width: 100%;
+    height: 190px;
+    object-fit: cover;
+    border-radius: 14px;
+    margin-bottom: 16px;
+    display: block;
+}
+
+
+/* =====================================================
+   DISABLED ARTICLE BUTTON
+   ===================================================== */
+
+button:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+
+/* =====================================================
+   MOBILE
+   ===================================================== */
+
+@media (max-width: 600px) {
+
+    .news-card-image {
+        height: 160px;
+    }
+
+    .ai-summary-block {
+        padding: 14px;
+    }
+
+}
+```
