@@ -1,8 +1,6 @@
 const express = require("express");
 const cors = require("cors");
 const axios = require("axios");
-const fs = require("fs");
-const path = require("path");
 const crypto = require("crypto");
 const bcrypt = require("bcryptjs");
 const Razorpay = require("razorpay");
@@ -12,6 +10,7 @@ require("dotenv").config();
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 const app = express();
+
 const PORT = process.env.PORT || 3000;
 
 // =====================================================
@@ -24,19 +23,77 @@ const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID;
 const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET;
 
-// IMPORTANT:
-// This model was tested directly and is working.
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_SECRET_KEY =
+    process.env.SUPABASE_SECRET_KEY;
+
 const GEMINI_MODEL = "gemini-3.5-flash-lite";
+
+// =====================================================
+// SUPABASE
+// =====================================================
+
+let supabase = null;
+
+async function initializeSupabase() {
+
+    if (
+        !SUPABASE_URL ||
+        !SUPABASE_SECRET_KEY
+    ) {
+        throw new Error(
+            "SUPABASE_URL or SUPABASE_SECRET_KEY is missing in .env"
+        );
+    }
+
+    const {
+        createClient
+    } = await import(
+        "@supabase/supabase-js"
+    );
+
+    supabase = createClient(
+        SUPABASE_URL,
+        SUPABASE_SECRET_KEY,
+        {
+            auth: {
+                persistSession: false,
+                autoRefreshToken: false,
+                detectSessionInUrl: false
+            }
+        }
+    );
+
+    console.log(
+        "Supabase database configuration loaded."
+    );
+}
 
 // =====================================================
 // GEMINI CONFIGURATION
 // =====================================================
 
-const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+let geminiModel = null;
 
-const geminiModel = genAI.getGenerativeModel({
-    model: GEMINI_MODEL
-});
+if (GEMINI_API_KEY) {
+
+    const genAI =
+        new GoogleGenerativeAI(
+            GEMINI_API_KEY
+        );
+
+    geminiModel =
+        genAI.getGenerativeModel({
+            model:
+                GEMINI_MODEL
+        });
+
+} else {
+
+    console.log(
+        "Gemini API key is missing."
+    );
+}
 
 // =====================================================
 // RAZORPAY CONFIGURATION
@@ -44,15 +101,29 @@ const geminiModel = genAI.getGenerativeModel({
 
 let razorpay = null;
 
-if (RAZORPAY_KEY_ID && RAZORPAY_KEY_SECRET) {
-    razorpay = new Razorpay({
-        key_id: RAZORPAY_KEY_ID,
-        key_secret: RAZORPAY_KEY_SECRET
-    });
+if (
+    RAZORPAY_KEY_ID &&
+    RAZORPAY_KEY_SECRET
+) {
 
-    console.log("Razorpay configuration loaded.");
+    razorpay =
+        new Razorpay({
+            key_id:
+                RAZORPAY_KEY_ID,
+
+            key_secret:
+                RAZORPAY_KEY_SECRET
+        });
+
+    console.log(
+        "Razorpay configuration loaded."
+    );
+
 } else {
-    console.log("Razorpay keys are missing.");
+
+    console.log(
+        "Razorpay keys are missing."
+    );
 }
 
 // =====================================================
@@ -60,61 +131,227 @@ if (RAZORPAY_KEY_ID && RAZORPAY_KEY_SECRET) {
 // =====================================================
 
 app.use(cors());
-app.use(express.json());
+
+app.use(
+    express.json()
+);
 
 // =====================================================
-// USERS FILE
+// DATABASE HELPERS
 // =====================================================
 
-const USERS_FILE = path.join(__dirname, "users.json");
+function ensureDatabase() {
 
-function ensureUsersFile() {
-    if (!fs.existsSync(USERS_FILE)) {
-        fs.writeFileSync(
-            USERS_FILE,
-            "[]",
-            "utf8"
+    if (!supabase) {
+        throw new Error(
+            "Supabase is not initialized."
         );
     }
 }
 
-function readUsers() {
-    ensureUsersFile();
+// -----------------------------------------------------
+// Convert database row → application user
+// -----------------------------------------------------
 
-    try {
-        const data = fs.readFileSync(
-            USERS_FILE,
-            "utf8"
-        );
+function dbRowToUser(row) {
 
-        return JSON.parse(data);
-
-    } catch (error) {
-        console.error(
-            "Users file read error:",
-            error.message
-        );
-
-        return [];
+    if (!row) {
+        return null;
     }
+
+    return {
+
+        id:
+            row.id,
+
+        name:
+            row.name,
+
+        email:
+            row.email,
+
+        password:
+            row.password,
+
+        savedStories:
+            row.saved_stories || [],
+
+        subscription:
+            row.subscription || "free",
+
+        subscriptionDetails:
+            row.subscription_details ||
+            null,
+
+        createdAt:
+            row.created_at
+    };
 }
 
-function writeUsers(users) {
-    fs.writeFileSync(
-        USERS_FILE,
-        JSON.stringify(users, null, 2),
-        "utf8"
-    );
+// -----------------------------------------------------
+// Convert application user → database row
+// -----------------------------------------------------
+
+function userToDbRow(user) {
+
+    return {
+
+        id:
+            user.id,
+
+        name:
+            user.name,
+
+        email:
+            user.email,
+
+        password:
+            user.password,
+
+        saved_stories:
+            user.savedStories || [],
+
+        subscription:
+            user.subscription || "free",
+
+        subscription_details:
+            user.subscriptionDetails ||
+            null,
+
+        created_at:
+            user.createdAt ||
+            new Date().toISOString()
+    };
+}
+
+// -----------------------------------------------------
+// Find user by ID
+// -----------------------------------------------------
+
+async function getUserById(userId) {
+
+    ensureDatabase();
+
+    const {
+        data,
+        error
+    } = await supabase
+        .from("users")
+        .select("*")
+        .eq("id", userId)
+        .maybeSingle();
+
+    if (error) {
+        throw error;
+    }
+
+    return dbRowToUser(data);
+}
+
+// -----------------------------------------------------
+// Find user by email
+// -----------------------------------------------------
+
+async function getUserByEmail(email) {
+
+    ensureDatabase();
+
+    const {
+        data,
+        error
+    } = await supabase
+        .from("users")
+        .select("*")
+        .eq(
+            "email",
+            email.toLowerCase()
+        )
+        .maybeSingle();
+
+    if (error) {
+        throw error;
+    }
+
+    return dbRowToUser(data);
+}
+
+// -----------------------------------------------------
+// Create user
+// -----------------------------------------------------
+
+async function createUser(user) {
+
+    ensureDatabase();
+
+    const {
+        data,
+        error
+    } = await supabase
+        .from("users")
+        .insert(
+            userToDbRow(user)
+        )
+        .select("*")
+        .single();
+
+    if (error) {
+        throw error;
+    }
+
+    return dbRowToUser(data);
+}
+
+// -----------------------------------------------------
+// Update user
+// -----------------------------------------------------
+
+async function updateUser(user) {
+
+    ensureDatabase();
+
+    const {
+        data,
+        error
+    } = await supabase
+        .from("users")
+        .update(
+            userToDbRow(user)
+        )
+        .eq(
+            "id",
+            user.id
+        )
+        .select("*")
+        .single();
+
+    if (error) {
+        throw error;
+    }
+
+    return dbRowToUser(data);
 }
 
 // =====================================================
 // GEMINI AI HELPER
 // =====================================================
 
-async function generateGeminiContent(prompt) {
+async function generateGeminiContent(
+    prompt
+) {
+
+    if (!geminiModel) {
+
+        throw new Error(
+            "GEMINI_API_KEY is missing."
+        );
+    }
+
     try {
+
         const result =
-            await geminiModel.generateContent(prompt);
+            await geminiModel.generateContent(
+                prompt
+            );
 
         const response =
             result.response;
@@ -125,130 +362,269 @@ async function generateGeminiContent(prompt) {
         return text;
 
     } catch (error) {
-        console.error("Gemini error:");
 
-        if (error.response) {
-            console.error(
-                error.response.data
-            );
-        } else {
-            console.error(
-                error.message
-            );
-        }
+        console.error(
+            "Gemini error:"
+        );
+
+        console.error(
+            error.message
+        );
 
         throw error;
     }
 }
 
 // =====================================================
+// HOME
+// =====================================================
+
+app.get(
+    "/",
+    (req, res) => {
+
+        res.json({
+            success:
+                true,
+
+            message:
+                "Gen Z Pulse Backend is running!",
+
+            version:
+                "2.0.0"
+        });
+    }
+);
+
+// =====================================================
 // HEALTH CHECK
 // =====================================================
 
-app.get("/api/health", (req, res) => {
-    res.json({
-        success: true,
-        status: "healthy",
-        service: "Gen G Pulse API"
-    });
-});
+app.get(
+    "/api/health",
+    (req, res) => {
+
+        res.json({
+
+            success:
+                true,
+
+            status:
+                "healthy",
+
+            service:
+                "Gen Z Pulse API",
+
+            database:
+                supabase
+                    ? "connected"
+                    : "not initialized"
+        });
+    }
+);
+
+// =====================================================
+// SUPABASE TEST
+// =====================================================
+
+app.get(
+    "/api/db-test",
+    async (req, res) => {
+
+        try {
+
+            ensureDatabase();
+
+            const {
+                data,
+                error
+            } = await supabase
+                .from("users")
+                .select("id")
+                .limit(1);
+
+            if (error) {
+                throw error;
+            }
+
+            res.json({
+
+                success:
+                    true,
+
+                message:
+                    "Supabase database connection successful.",
+
+                rows:
+                    data.length
+            });
+
+        } catch (error) {
+
+            console.error(
+                "Database test failed:",
+                error
+            );
+
+            res.status(500).json({
+
+                success:
+                    false,
+
+                message:
+                    "Supabase database connection failed.",
+
+                error:
+                    error.message
+            });
+        }
+    }
+);
 
 // =====================================================
 // GEMINI AI TEST
 // =====================================================
 
-app.get("/api/ai-test", async (req, res) => {
-    try {
-        const prompt =
-            "Say exactly: Gemini AI connection successful.";
+app.get(
+    "/api/ai-test",
+    async (req, res) => {
 
-        const aiResponse =
-            await generateGeminiContent(prompt);
+        try {
 
-        res.json({
-            success: true,
-            message:
-                "Gemini AI is working!",
-            aiResponse:
-                aiResponse
-        });
+            const prompt =
+                "Say exactly: Gemini AI connection successful.";
 
-    } catch (error) {
-        console.error(
-            "AI test failed:",
-            error.message
-        );
+            const aiResponse =
+                await generateGeminiContent(
+                    prompt
+                );
 
-        res.status(503).json({
-            success: false,
-            message:
-                "Gemini AI is temporarily unavailable.",
-            error:
+            res.json({
+
+                success:
+                    true,
+
+                message:
+                    "Gemini AI is working!",
+
+                aiResponse:
+                    aiResponse
+            });
+
+        } catch (error) {
+
+            console.error(
+                "AI test failed:",
                 error.message
-        });
+            );
+
+            res.status(503).json({
+
+                success:
+                    false,
+
+                message:
+                    "Gemini AI is temporarily unavailable.",
+
+                error:
+                    error.message
+            });
+        }
     }
-});
+);
 
 // =====================================================
 // GNEWS API
 // =====================================================
 
-app.get("/api/news", async (req, res) => {
-    try {
-        const query =
-            req.query.q ||
-            "India technology";
+app.get(
+    "/api/news",
+    async (req, res) => {
 
-        if (!GNEWS_API_KEY) {
-            return res.status(500).json({
-                success: false,
-                message:
-                    "GNews API key is missing."
-            });
-        }
+        try {
 
-        const response =
-            await axios.get(
-                "https://gnews.io/api/v4/search",
-                {
-                    params: {
-                        q: query,
-                        lang: "en",
-                        country: "in",
-                        max: 10,
-                        apikey:
-                            GNEWS_API_KEY
+            const query =
+                req.query.q ||
+                "India technology";
+
+            if (!GNEWS_API_KEY) {
+
+                return res.status(500).json({
+
+                    success:
+                        false,
+
+                    message:
+                        "GNews API key is missing."
+                });
+            }
+
+            const response =
+                await axios.get(
+                    "https://gnews.io/api/v4/search",
+                    {
+                        params: {
+
+                            q:
+                                query,
+
+                            lang:
+                                "en",
+
+                            country:
+                                "in",
+
+                            max:
+                                10,
+
+                            apikey:
+                                GNEWS_API_KEY
+                        }
                     }
-                }
-            );
+                );
 
-        res.json({
-            success: true,
-            query: query,
-            totalArticles:
-                response.data
-                    .totalArticles,
-            articles:
-                response.data.articles
-        });
+            res.json({
 
-    } catch (error) {
-        console.error(
-            "GNews error:",
-            error.response?.data ||
-            error.message
-        );
+                success:
+                    true,
 
-        res.status(500).json({
-            success: false,
-            message:
-                "Unable to fetch news.",
-            error:
+                query:
+                    query,
+
+                totalArticles:
+                    response
+                        .data
+                        .totalArticles,
+
+                articles:
+                    response
+                        .data
+                        .articles
+            });
+
+        } catch (error) {
+
+            console.error(
+                "GNews error:",
                 error.response?.data ||
                 error.message
-        });
+            );
+
+            res.status(500).json({
+
+                success:
+                    false,
+
+                message:
+                    "Unable to fetch news.",
+
+                error:
+                    error.response?.data ||
+                    error.message
+            });
+        }
     }
-});
+);
 
 // =====================================================
 // AI NEWS ANALYSIS
@@ -257,7 +633,9 @@ app.get("/api/news", async (req, res) => {
 app.post(
     "/api/analyze-news",
     async (req, res) => {
+
         try {
+
             const {
                 title,
                 description,
@@ -266,9 +644,16 @@ app.post(
                 url
             } = req.body;
 
-            if (!title && !description) {
+            if (
+                !title &&
+                !description
+            ) {
+
                 return res.status(400).json({
-                    success: false,
+
+                    success:
+                        false,
+
                     message:
                         "News title or description is required."
                 });
@@ -305,7 +690,7 @@ app.post(
                     );
 
             const prompt = `
-You are the AI news explainer for Gen G Pulse.
+You are the AI news explainer for Gen Z Pulse.
 
 Explain the following news article in simple language for Indian students and young adults.
 
@@ -347,30 +732,41 @@ Use only information supported by the provided article.
                 );
 
             res.json({
-                success: true,
+
+                success:
+                    true,
+
                 title:
                     cleanTitle,
+
                 source:
                     cleanSource,
+
                 url:
                     url || "",
+
                 analysis:
                     aiResponse,
+
                 aiResponse:
                     aiResponse
             });
 
         } catch (error) {
+
             console.error(
                 "News analysis failed:",
-                error.response?.data ||
                 error.message
             );
 
             res.status(503).json({
-                success: false,
+
+                success:
+                    false,
+
                 message:
                     "Gemini AI is temporarily busy. Please try again later.",
+
                 retryable:
                     true
             });
@@ -385,7 +781,9 @@ Use only information supported by the provided article.
 app.post(
     "/api/signup",
     async (req, res) => {
+
         try {
+
             const {
                 name,
                 email,
@@ -397,26 +795,52 @@ app.post(
                 !email ||
                 !password
             ) {
+
                 return res.status(400).json({
-                    success: false,
+
+                    success:
+                        false,
+
                     message:
                         "Name, email and password are required."
                 });
             }
 
-            const users =
-                readUsers();
+            const cleanName =
+                String(name).trim();
+
+            const cleanEmail =
+                String(email)
+                    .trim()
+                    .toLowerCase();
+
+            if (
+                cleanName.length === 0 ||
+                cleanEmail.length === 0
+            ) {
+
+                return res.status(400).json({
+
+                    success:
+                        false,
+
+                    message:
+                        "Name and email cannot be empty."
+                });
+            }
 
             const existingUser =
-                users.find(
-                    user =>
-                        user.email.toLowerCase() ===
-                        email.toLowerCase()
+                await getUserByEmail(
+                    cleanEmail
                 );
 
             if (existingUser) {
+
                 return res.status(409).json({
-                    success: false,
+
+                    success:
+                        false,
+
                     message:
                         "An account with this email already exists."
                 });
@@ -429,61 +853,78 @@ app.post(
                 );
 
             const newUser = {
+
                 id:
                     crypto.randomUUID(),
 
                 name:
-                    name,
+                    cleanName,
 
                 email:
-                    email.toLowerCase(),
+                    cleanEmail,
 
                 password:
                     hashedPassword,
 
-                savedStories: [],
+                savedStories:
+                    [],
 
                 subscription:
                     "free",
+
+                subscriptionDetails:
+                    null,
 
                 createdAt:
                     new Date().toISOString()
             };
 
-            users.push(
-                newUser
-            );
-
-            writeUsers(
-                users
-            );
+            const savedUser =
+                await createUser(
+                    newUser
+                );
 
             res.status(201).json({
-                success: true,
+
+                success:
+                    true,
+
                 message:
                     "Account created successfully.",
+
                 user: {
+
                     id:
-                        newUser.id,
+                        savedUser.id,
+
                     name:
-                        newUser.name,
+                        savedUser.name,
+
                     email:
-                        newUser.email,
+                        savedUser.email,
+
                     subscription:
-                        newUser.subscription
+                        savedUser.subscription
                 }
             });
 
         } catch (error) {
+
             console.error(
                 "Signup error:",
                 error
             );
 
             res.status(500).json({
-                success: false,
+
+                success:
+                    false,
+
                 message:
-                    "Unable to create account."
+                    "Unable to create account.",
+
+                error:
+                    error.message
             });
         }
     }
@@ -496,7 +937,9 @@ app.post(
 app.post(
     "/api/signin",
     async (req, res) => {
+
         try {
+
             const {
                 email,
                 password
@@ -506,26 +949,34 @@ app.post(
                 !email ||
                 !password
             ) {
+
                 return res.status(400).json({
-                    success: false,
+
+                    success:
+                        false,
+
                     message:
                         "Email and password are required."
                 });
             }
 
-            const users =
-                readUsers();
+            const cleanEmail =
+                String(email)
+                    .trim()
+                    .toLowerCase();
 
             const user =
-                users.find(
-                    item =>
-                        item.email.toLowerCase() ===
-                        email.toLowerCase()
+                await getUserByEmail(
+                    cleanEmail
                 );
 
             if (!user) {
+
                 return res.status(401).json({
-                    success: false,
+
+                    success:
+                        false,
+
                     message:
                         "Invalid email or password."
                 });
@@ -538,24 +989,36 @@ app.post(
                 );
 
             if (!passwordMatch) {
+
                 return res.status(401).json({
-                    success: false,
+
+                    success:
+                        false,
+
                     message:
                         "Invalid email or password."
                 });
             }
 
             res.json({
-                success: true,
+
+                success:
+                    true,
+
                 message:
                     "Sign in successful.",
+
                 user: {
+
                     id:
                         user.id,
+
                     name:
                         user.name,
+
                     email:
                         user.email,
+
                     subscription:
                         user.subscription ||
                         "free"
@@ -563,15 +1026,22 @@ app.post(
             });
 
         } catch (error) {
+
             console.error(
                 "Signin error:",
                 error
             );
 
             res.status(500).json({
-                success: false,
+
+                success:
+                    false,
+
                 message:
-                    "Unable to sign in."
+                    "Unable to sign in.",
+
+                error:
+                    error.message
             });
         }
     }
@@ -583,8 +1053,10 @@ app.post(
 
 app.post(
     "/api/save-story",
-    (req, res) => {
+    async (req, res) => {
+
         try {
+
             const {
                 userId,
                 story
@@ -594,34 +1066,41 @@ app.post(
                 !userId ||
                 !story
             ) {
+
                 return res.status(400).json({
-                    success: false,
+
+                    success:
+                        false,
+
                     message:
                         "User ID and story are required."
                 });
             }
 
-            const users =
-                readUsers();
-
             const user =
-                users.find(
-                    item =>
-                        item.id ===
-                        userId
+                await getUserById(
+                    userId
                 );
 
             if (!user) {
+
                 return res.status(404).json({
-                    success: false,
+
+                    success:
+                        false,
+
                     message:
                         "User not found."
                 });
             }
 
-            if (!user.savedStories) {
-                user.savedStories =
-                    [];
+            if (
+                !Array.isArray(
+                    user.savedStories
+                )
+            ) {
+
+                user.savedStories = [];
             }
 
             const alreadySaved =
@@ -632,35 +1111,48 @@ app.post(
                 );
 
             if (!alreadySaved) {
+
                 user.savedStories.push(
                     story
                 );
             }
 
-            writeUsers(
-                users
-            );
+            const updatedUser =
+                await updateUser(
+                    user
+                );
 
             res.json({
-                success: true,
+
+                success:
+                    true,
+
                 message:
                     alreadySaved
                         ? "Story already saved."
                         : "Story saved successfully.",
+
                 savedStories:
-                    user.savedStories
+                    updatedUser.savedStories
             });
 
         } catch (error) {
+
             console.error(
                 "Save story error:",
                 error
             );
 
             res.status(500).json({
-                success: false,
+
+                success:
+                    false,
+
                 message:
-                    "Unable to save story."
+                    "Unable to save story.",
+
+                error:
+                    error.message
             });
         }
     }
@@ -672,46 +1164,57 @@ app.post(
 
 app.get(
     "/api/saved/:userId",
-    (req, res) => {
+    async (req, res) => {
+
         try {
+
             const userId =
                 req.params.userId;
 
-            const users =
-                readUsers();
-
             const user =
-                users.find(
-                    item =>
-                        item.id ===
-                        userId
+                await getUserById(
+                    userId
                 );
 
             if (!user) {
+
                 return res.status(404).json({
-                    success: false,
+
+                    success:
+                        false,
+
                     message:
                         "User not found."
                 });
             }
 
             res.json({
-                success: true,
+
+                success:
+                    true,
+
                 savedStories:
                     user.savedStories ||
                     []
             });
 
         } catch (error) {
+
             console.error(
                 "Get saved stories error:",
                 error
             );
 
             res.status(500).json({
-                success: false,
+
+                success:
+                    false,
+
                 message:
-                    "Unable to load saved stories."
+                    "Unable to load saved stories.",
+
+                error:
+                    error.message
             });
         }
     }
@@ -724,10 +1227,16 @@ app.get(
 app.post(
     "/api/create-plus-order",
     async (req, res) => {
+
         try {
+
             if (!razorpay) {
+
                 return res.status(500).json({
-                    success: false,
+
+                    success:
+                        false,
+
                     message:
                         "Razorpay is not configured on the server."
                 });
@@ -738,42 +1247,57 @@ app.post(
             } = req.body;
 
             if (!userId) {
+
                 return res.status(400).json({
-                    success: false,
+
+                    success:
+                        false,
+
                     message:
                         "User ID is required."
                 });
             }
 
-            const users =
-                readUsers();
-
             const user =
-                users.find(
-                    item =>
-                        item.id ===
-                        userId
+                await getUserById(
+                    userId
                 );
 
             if (!user) {
+
                 return res.status(404).json({
-                    success: false,
+
+                    success:
+                        false,
+
                     message:
                         "User not found."
                 });
             }
 
-            // ₹99 = 9900 paise
+            // =================================================
+            // ₹99 ONE-TIME PAYMENT
+            // =================================================
+
             const options = {
-                amount: 9900,
-                currency: "INR",
+
+                amount:
+                    9900,
+
+                currency:
+                    "INR",
+
                 receipt:
-                    `gen-g-${Date.now()}`,
+                    `gen-z-${Date.now()}`,
+
                 notes: {
+
                     product:
-                        "Gen G Pulse Plus",
+                        "Gen Z Pulse Plus",
+
                     userId:
                         userId,
+
                     plan:
                         "plus"
                 }
@@ -785,31 +1309,55 @@ app.post(
                 );
 
             res.json({
-                success: true,
+
+                success:
+                    true,
+
                 order: {
+
                     id:
                         order.id,
+
                     amount:
                         order.amount,
+
                     currency:
                         order.currency
                 },
+
+                // These top-level values
+                // match the frontend.
+                orderId:
+                    order.id,
+
+                amount:
+                    order.amount,
+
+                currency:
+                    order.currency,
+
                 razorpayKeyId:
                     RAZORPAY_KEY_ID,
+
                 plan:
                     "plus"
             });
 
         } catch (error) {
+
             console.error(
                 "Razorpay order creation failed:",
                 error
             );
 
             res.status(500).json({
-                success: false,
+
+                success:
+                    false,
+
                 message:
                     "Unable to create Razorpay order.",
+
                 error:
                     error.error?.description ||
                     error.message
@@ -825,7 +1373,9 @@ app.post(
 app.post(
     "/api/verify-plus-payment",
     async (req, res) => {
+
         try {
+
             const {
                 userId,
                 razorpay_order_id,
@@ -839,10 +1389,28 @@ app.post(
                 !razorpay_payment_id ||
                 !razorpay_signature
             ) {
+
                 return res.status(400).json({
-                    success: false,
+
+                    success:
+                        false,
+
                     message:
                         "Payment verification details are incomplete."
+                });
+            }
+
+            if (
+                !RAZORPAY_KEY_SECRET
+            ) {
+
+                return res.status(500).json({
+
+                    success:
+                        false,
+
+                    message:
+                        "Razorpay secret key is not configured."
                 });
             }
 
@@ -860,36 +1428,33 @@ app.post(
                     .digest("hex");
 
             const signatureMatches =
-                crypto.timingSafeEqual(
-                    Buffer.from(
-                        generatedSignature
-                    ),
-                    Buffer.from(
-                        razorpay_signature
-                    )
-                );
+                generatedSignature ===
+                razorpay_signature;
 
             if (!signatureMatches) {
+
                 return res.status(400).json({
-                    success: false,
+
+                    success:
+                        false,
+
                     message:
                         "Payment verification failed."
                 });
             }
 
-            const users =
-                readUsers();
-
             const user =
-                users.find(
-                    item =>
-                        item.id ===
-                        userId
+                await getUserById(
+                    userId
                 );
 
             if (!user) {
+
                 return res.status(404).json({
-                    success: false,
+
+                    success:
+                        false,
+
                     message:
                         "User not found."
                 });
@@ -899,52 +1464,75 @@ app.post(
                 "plus";
 
             user.subscriptionDetails = {
+
                 plan:
-                    "Gen G Pulse Plus",
+                    "Gen Z Pulse Plus",
+
                 amount:
                     99,
+
                 currency:
                     "INR",
+
                 paymentId:
                     razorpay_payment_id,
+
                 orderId:
                     razorpay_order_id,
+
                 activatedAt:
                     new Date().toISOString()
             };
 
-            writeUsers(
-                users
-            );
+            const updatedUser =
+                await updateUser(
+                    user
+                );
 
             res.json({
-                success: true,
+
+                success:
+                    true,
+
                 message:
-                    "Gen G Pulse Plus activated successfully.",
+                    "Gen Z Pulse Plus activated successfully.",
+
                 subscription:
                     "plus",
+
                 user: {
+
                     id:
-                        user.id,
+                        updatedUser.id,
+
                     name:
-                        user.name,
+                        updatedUser.name,
+
                     email:
-                        user.email,
+                        updatedUser.email,
+
                     subscription:
-                        user.subscription
+                        updatedUser.subscription
                 }
             });
 
         } catch (error) {
+
             console.error(
                 "Razorpay verification failed:",
                 error
             );
 
             res.status(500).json({
-                success: false,
+
+                success:
+                    false,
+
                 message:
-                    "Unable to verify payment."
+                    "Unable to verify payment.",
+
+                error:
+                    error.message
             });
         }
     }
@@ -954,21 +1542,50 @@ app.post(
 // START SERVER
 // =====================================================
 
-app.listen(
-    PORT,
-    () => {
-        console.log(
-            `Gen G Pulse backend running at http://localhost:${PORT}`
+async function startServer() {
+
+    try {
+
+        await initializeSupabase();
+
+        app.listen(
+            PORT,
+            () => {
+
+                console.log(
+                    `Gen Z Pulse backend running at http://localhost:${PORT}`
+                );
+
+                console.log(
+                    `Gemini model: ${GEMINI_MODEL}`
+                );
+
+                console.log(
+                    supabase
+                        ? "Supabase: connected"
+                        : "Supabase: NOT connected"
+                );
+
+                console.log(
+                    RAZORPAY_KEY_ID
+                        ? "Razorpay: configured"
+                        : "Razorpay: NOT configured"
+                );
+            }
         );
 
-        console.log(
-            `Gemini model: ${GEMINI_MODEL}`
+    } catch (error) {
+
+        console.error(
+            "Server startup failed:"
         );
 
-        console.log(
-            RAZORPAY_KEY_ID
-                ? "Razorpay: configured"
-                : "Razorpay: NOT configured"
+        console.error(
+            error.message
         );
+
+        process.exit(1);
     }
-);
+}
+
+startServer();
