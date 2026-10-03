@@ -116,7 +116,7 @@ async function loadNews(query = "India technology") {
         <div class="card">
             <h3>Loading today's news...</h3>
             <p>
-                Please wait while Gen G Pulse
+                Please wait while Gen Z Pulse
                 loads the latest news.
             </p>
         </div>
@@ -194,7 +194,7 @@ async function loadNews(query = "India technology") {
                 </h3>
 
                 <p>
-                    Make sure the Gen G Pulse backend
+                    Make sure the Gen Z Pulse backend
                     is running on
                     http://localhost:3000
                 </p>
@@ -1152,7 +1152,7 @@ function showAccount(type) {
             </span>
 
             <h2>
-                Sign in to Gen G Pulse
+                Sign in to Gen Z Pulse
             </h2>
 
             <p>
@@ -1240,7 +1240,7 @@ function showAccount(type) {
             </span>
 
             <h2>
-                Join Gen G Pulse
+                Join Gen Z Pulse
             </h2>
 
             <p>
@@ -1340,7 +1340,7 @@ function showAccount(type) {
         content.innerHTML = `
 
             <span class="tag">
-                Gen G Pulse Plus
+                Gen Z Pulse Plus
             </span>
 
             <h2>
@@ -1349,7 +1349,7 @@ function showAccount(type) {
 
             <p>
                 Start with Free or upgrade to Plus
-                for a more personalized Gen G Pulse
+                for a more personalized Gen Z Pulse
                 experience.
             </p>
 
@@ -1576,7 +1576,7 @@ async function signUpUser() {
 
 
         toast(
-            `Welcome to Gen G Pulse, ${
+            `Welcome to Gen Z Pulse, ${
                 data.user.name
             }!`
         );
@@ -1589,7 +1589,7 @@ async function signUpUser() {
         );
 
         toast(
-            "Cannot connect to Gen G Pulse server"
+            "Cannot connect to Gen Z Pulse server"
         );
     }
 }
@@ -1686,7 +1686,7 @@ async function signInUser() {
         );
 
         toast(
-            "Cannot connect to Gen G Pulse server"
+            "Cannot connect to Gen Z Pulse server"
         );
     }
 }
@@ -1829,10 +1829,10 @@ async function startPlusCheckout() {
                 data.currency,
 
             name:
-                "Gen G Pulse",
+                "Gen Z Pulse",
 
             description:
-                "Gen G Pulse Plus",
+                "Gen Z Pulse Plus",
 
             order_id:
                 data.orderId,
@@ -1987,7 +1987,7 @@ async function verifyPlusPayment(
 
 
         toast(
-            "🎉 Gen G Pulse Plus activated!"
+            "🎉 Gen Z Pulse Plus activated!"
         );
 
 
@@ -2179,14 +2179,14 @@ function showModal(type, data) {
                             ${
                                 currentUser.subscription ===
                                 "plus"
-                                    ? "Gen G Pulse Plus"
+                                    ? "Gen Z Pulse Plus"
                                     : "Free"
                             }
                         </p>
 
                         <p>
                             Your account is connected
-                            to Gen G Pulse.
+                            to Gen Z Pulse.
                         </p>
 
                         ${
@@ -2205,7 +2205,7 @@ function showModal(type, data) {
                                         </span>
 
                                         <h3>
-                                            Gen G Pulse Plus
+                                            Gen Z Pulse Plus
                                         </h3>
 
                                         <p>
@@ -2235,7 +2235,7 @@ function showModal(type, data) {
                     : `
                         <p>
                             Sign in to manage
-                            your Gen G Pulse account.
+                            your Gen Z Pulse account.
                         </p>
 
                         <button
@@ -2375,7 +2375,7 @@ function showModal(type, data) {
             <h2>
                 ${escapeHtml(
                     data?.title ||
-                    "Gen G Pulse"
+                    "Gen Z Pulse"
                 )}
             </h2>
 
