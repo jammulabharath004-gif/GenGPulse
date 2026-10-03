@@ -1,4 +1,4 @@
-const API_BASE = "http://localhost:3000";
+const API_BASE = "https://gengpulse-1.onrender.com";
 
 let items = [];
 let filter = "All";
