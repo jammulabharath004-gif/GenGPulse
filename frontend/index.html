@@ -515,25 +515,122 @@ footer{
 }
 
 @media(max-width:520px){
+  main{padding:14px 10px 30px}
+  .nav{padding:10px 12px;gap:8px}
+  .brand{font-size:16px;gap:6px}
+  .pulse{width:27px;height:27px;border-radius:8px}
+  .profile{padding:6px 8px;font-size:11px}
+  .hero{gap:10px}
+  .heroCard{padding:18px;border-radius:20px}
+  .hero h1{font-size:30px;line-height:1.05;margin:9px 0 12px}
+  .hero p{font-size:13px;line-height:1.4}
+  .eyebrow{font-size:9px}
+  .cta{gap:7px;margin-top:16px}
+  .btn{padding:9px 11px;font-size:11px}
+  .statCard{min-height:130px;padding:16px;border-radius:20px}
+  .stat{font-size:32px}
+  .statCard p{font-size:12px}
+  .section{margin-top:20px}
+  .sectionHead{margin-bottom:10px}
+  .sectionHead h2{font-size:19px}
+  .sectionHead p{font-size:12px}
+  .search input{padding:9px 10px;font-size:12px}
+  .filter{padding:7px 9px;font-size:11px}
+  .cards,.opps{grid-template-columns:1fr;gap:9px}
+  .card,.opp{padding:13px;border-radius:15px}
+  .card h3,.opp h3{font-size:15px}
+  .card p,.opp p{font-size:12px;line-height:1.4}
+  .action,.apply{padding:8px;font-size:12px}
+  .explain .card{min-height:auto}
+  footer{padding:18px 10px;font-size:11px}
+}
+</style>
+<style>
+/* Gen G Flash responsive layout */
+#flash .cards{
+  width:100%;
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:14px;
+}
+
+#flash .card{
+  width:100%;
+  min-width:0;
+  max-width:100%;
+  overflow:hidden;
+}
+
+#flash .card img{
+  width:100%;
+  max-width:100%;
+  height:auto;
+  display:block;
+  object-fit:cover;
+}
+
+@media(max-width:800px){
+  #flash .cards{
+    grid-template-columns:1fr !important;
+  }
+
+  #flash .card{
+    width:100% !important;
+    max-width:100% !important;
+  }
+}
+
+@media(max-width:520px){
   main{
-    padding:22px 14px 45px
+    width:100%;
+    max-width:100%;
+    padding:14px 12px 30px !important;
   }
 
-  .heroCard{
-    padding:25px
+  #flash{
+    width:100%;
+    max-width:100%;
   }
 
-  .cards,
-  .opps{
-    grid-template-columns:1fr
+  #flash .cards{
+    display:flex !important;
+    flex-direction:column !important;
+    gap:14px !important;
+    width:100% !important;
   }
 
-  .hero h1{
-    font-size:42px
+  #flash .card{
+    width:100% !important;
+    max-width:380px !important;
+    margin:0 auto !important;
+    padding:15px !important;
+    overflow:hidden !important;
   }
 
-  .statCard{
-    min-height:190px
+  #flash .card img{
+    width:100% !important;
+    max-width:100% !important;
+    height:auto !important;
+  }
+
+  #flash .card h3{
+    font-size:17px !important;
+    line-height:1.25 !important;
+  }
+
+  #flash .card p{
+    font-size:13px !important;
+    line-height:1.45 !important;
+  }
+
+  #flash .meta{
+    font-size:11px !important;
+  }
+
+  html,body{
+    width:100% !important;
+    max-width:100% !important;
+    overflow-x:hidden !important;
   }
 }
 </style>
@@ -1060,5 +1157,109 @@ id="toast">
 <!-- YOUR REAL FRONTEND JAVASCRIPT -->
 <script src="script.js"></script>
 
+<style>
+@media screen and (max-width:520px){
+
+  /* Keep the entire page inside the phone width */
+  html,body{
+    width:100% !important;
+    max-width:100% !important;
+    overflow-x:hidden !important;
+  }
+
+  main{
+    width:100% !important;
+    max-width:100% !important;
+    padding:12px 10px 28px !important;
+  }
+
+  /* Gen G Flash */
+  #flash{
+    width:100% !important;
+    max-width:100% !important;
+  }
+
+  #flash .cards{
+    display:flex !important;
+    flex-direction:column !important;
+    width:100% !important;
+    gap:10px !important;
+  }
+
+  /* Smaller phone card */
+  #flash .cards .card{
+    width:100% !important;
+    max-width:100% !important;
+    min-width:0 !important;
+    padding:10px !important;
+    margin:0 !important;
+    border-radius:12px !important;
+    transform:none !important;
+  }
+
+  /* IMPORTANT: make news images much smaller */
+  #flash .cards .card img{
+    display:block !important;
+    width:100% !important;
+    max-width:100% !important;
+    height:125px !important;
+    min-height:0 !important;
+    object-fit:cover !important;
+    border-radius:9px !important;
+  }
+
+  /* Small category/tag */
+  #flash .cards .card .tag{
+    font-size:8px !important;
+    line-height:1.2 !important;
+    margin:5px 0 !important;
+  }
+
+  /* Smaller headline */
+  #flash .cards .card h3{
+    font-size:14px !important;
+    line-height:1.2 !important;
+    margin:6px 0 !important;
+  }
+
+  /* Smaller description */
+  #flash .cards .card p{
+    font-size:11px !important;
+    line-height:1.35 !important;
+    margin:0 0 8px !important;
+  }
+
+  /* Smaller metadata */
+  #flash .cards .card .meta{
+    font-size:9px !important;
+  }
+
+  /* Smaller buttons */
+  #flash .cards .card .action{
+    margin-top:7px !important;
+    padding:7px !important;
+    font-size:10px !important;
+    border-radius:8px !important;
+  }
+
+  /* Search and filters */
+  #flash .search input{
+    padding:8px 9px !important;
+    font-size:11px !important;
+  }
+
+  #flash .filter{
+    padding:6px 8px !important;
+    font-size:10px !important;
+  }
+}
+</style>
 </body>
 </html>
+
+
+
+
+
+
+

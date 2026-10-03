@@ -1,6 +1,27 @@
-```css
 /* =====================================================
-   GEN G NEWS MODAL
+   GEN G PULSE - GLOBAL
+   ===================================================== */
+
+* {
+    box-sizing: border-box;
+}
+
+html,
+body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+}
+
+body {
+    font-family: Arial, sans-serif;
+}
+
+
+/* =====================================================
+   NEWS SOURCE
    ===================================================== */
 
 .news-source-box {
@@ -14,7 +35,7 @@
 
 
 /* =====================================================
-   AI SUMMARY BLOCKS
+   AI SUMMARY
    ===================================================== */
 
 .ai-summary-block {
@@ -52,8 +73,12 @@
 
 
 /* =====================================================
-   DISABLED ARTICLE BUTTON
+   BUTTONS
    ===================================================== */
+
+button {
+    max-width: 100%;
+}
 
 button:disabled {
     opacity: 0.45;
@@ -62,10 +87,332 @@ button:disabled {
 
 
 /* =====================================================
-   MOBILE
+   MODALS
+   ===================================================== */
+
+.modal {
+    width: 100%;
+    max-width: 100%;
+    padding: 16px;
+    overflow-y: auto;
+}
+
+.modalBox {
+    width: 100%;
+    max-width: 560px;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+
+/* =====================================================
+   MOBILE - TABLET
+   ===================================================== */
+
+@media (max-width: 800px) {
+
+    body {
+        width: 100%;
+        max-width: 100%;
+        overflow-x: hidden;
+    }
+
+    main {
+        width: 100%;
+        max-width: 100%;
+    }
+
+    .nav {
+        width: 100%;
+        max-width: 100%;
+        padding: 10px 12px;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .navlinks {
+        display: none;
+    }
+
+    .brand {
+        font-size: 16px;
+        gap: 6px;
+        min-width: 0;
+    }
+
+    .pulse {
+        width: 28px;
+        height: 28px;
+        border-radius: 8px;
+        flex-shrink: 0;
+    }
+
+    .nav > div:last-child {
+        margin-left: auto !important;
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 5px !important;
+        flex-wrap: wrap;
+    }
+
+    .profile {
+        padding: 7px 8px;
+        font-size: 11px;
+        white-space: nowrap;
+    }
+
+    .btn {
+        padding: 8px 10px;
+        font-size: 11px;
+        white-space: nowrap;
+    }
+
+    .hero {
+        grid-template-columns: 1fr !important;
+    }
+
+    .heroCard {
+        padding: 22px;
+        border-radius: 20px;
+    }
+
+    .hero h1 {
+        font-size: 34px;
+        line-height: 1.05;
+        margin: 8px 0 12px;
+    }
+
+    .hero p {
+        font-size: 14px;
+        line-height: 1.45;
+    }
+
+    .statCard {
+        min-height: auto;
+        padding: 20px;
+        border-radius: 20px;
+    }
+
+    .stat {
+        font-size: 34px;
+    }
+
+    .cards,
+    .opps {
+        grid-template-columns: 1fr !important;
+    }
+
+    .explain {
+        grid-template-columns: 1fr !important;
+    }
+
+    .card,
+    .opp {
+        width: 100%;
+        max-width: 100%;
+        padding: 14px;
+        border-radius: 16px;
+    }
+
+    .card h3,
+    .opp h3 {
+        font-size: 16px;
+        line-height: 1.3;
+    }
+
+    .card p,
+    .opp p {
+        font-size: 13px;
+        line-height: 1.45;
+    }
+
+    .search {
+        width: 100%;
+    }
+
+    .search input {
+        width: 100%;
+        min-width: 0;
+        padding: 10px 12px;
+        font-size: 13px;
+    }
+
+    .filters {
+        width: 100%;
+        overflow-x: auto;
+        flex-wrap: nowrap;
+        padding-bottom: 4px;
+    }
+
+    .filter {
+        flex-shrink: 0;
+        padding: 7px 10px;
+        font-size: 11px;
+    }
+
+    .sectionHead {
+        display: block;
+    }
+
+    .sectionHead h2 {
+        font-size: 20px;
+    }
+
+    .sectionHead p {
+        font-size: 12px;
+    }
+
+    .news-card-image {
+        height: 170px;
+    }
+
+    .modal {
+        place-items: start center;
+        padding: 10px;
+    }
+
+    .modalBox {
+        width: 100%;
+        max-width: 100%;
+        max-height: 92vh;
+        padding: 18px;
+        border-radius: 18px;
+        overflow-y: auto;
+    }
+
+    footer {
+        padding: 18px 12px;
+        font-size: 11px;
+        line-height: 1.5;
+    }
+}
+
+
+/* =====================================================
+   MOBILE - PHONE
    ===================================================== */
 
 @media (max-width: 600px) {
+
+    main {
+        width: 100%;
+        padding: 14px 10px 30px;
+    }
+
+    header {
+        width: 100%;
+        overflow: hidden;
+    }
+
+    .nav {
+        padding: 8px 9px;
+    }
+
+    .brand {
+        font-size: 14px;
+    }
+
+    .pulse {
+        width: 25px;
+        height: 25px;
+    }
+
+    .nav > div:last-child {
+        gap: 3px !important;
+    }
+
+    .profile {
+        padding: 6px 7px;
+        font-size: 10px;
+    }
+
+    .nav .btn {
+        padding: 6px 8px !important;
+        font-size: 10px;
+    }
+
+    .heroCard {
+        padding: 18px;
+        border-radius: 18px;
+    }
+
+    .hero h1 {
+        font-size: 29px;
+        line-height: 1.08;
+    }
+
+    .hero p {
+        font-size: 13px;
+    }
+
+    .eyebrow {
+        font-size: 9px;
+    }
+
+    .cta {
+        width: 100%;
+    }
+
+    .cta .btn {
+        width: 100%;
+        text-align: center;
+    }
+
+    .statCard {
+        padding: 16px;
+        border-radius: 18px;
+    }
+
+    .stat {
+        font-size: 30px;
+    }
+
+    .statCard p {
+        font-size: 12px;
+    }
+
+    .section {
+        margin-top: 20px;
+    }
+
+    .sectionHead h2 {
+        font-size: 19px;
+    }
+
+    .sectionHead p {
+        font-size: 12px;
+    }
+
+    .cards,
+    .opps {
+        grid-template-columns: 1fr !important;
+        gap: 10px;
+    }
+
+    .card,
+    .opp {
+        padding: 13px;
+        border-radius: 15px;
+    }
+
+    .card h3,
+    .opp h3 {
+        font-size: 15px;
+    }
+
+    .card p,
+    .opp p {
+        font-size: 12px;
+        line-height: 1.4;
+    }
+
+    .action,
+    .apply {
+        width: 100%;
+        padding: 9px;
+        font-size: 12px;
+    }
 
     .news-card-image {
         height: 160px;
@@ -75,5 +422,85 @@ button:disabled {
         padding: 14px;
     }
 
+    .ai-summary-block h3 {
+        font-size: 15px;
+    }
+
+    .ai-summary-block p {
+        font-size: 13px;
+        line-height: 1.55;
+    }
+
+    .modal {
+        padding: 8px;
+    }
+
+    .modalBox {
+        width: 100%;
+        max-width: 100%;
+        padding: 15px;
+        border-radius: 16px;
+    }
+
+    .modalBox h2 {
+        font-size: 20px;
+    }
+
+    .modalBox p {
+        font-size: 13px;
+        line-height: 1.5;
+    }
+
+    .modalBox .cards {
+        grid-template-columns: 1fr !important;
+    }
+
+    .modalBox ul {
+        font-size: 13px;
+        line-height: 1.7 !important;
+    }
+
+    footer {
+        padding: 18px 10px;
+        font-size: 10px;
+    }
 }
-```
+
+
+/* =====================================================
+   VERY SMALL PHONES
+   ===================================================== */
+
+@media (max-width: 380px) {
+
+    .brand {
+        font-size: 12px;
+    }
+
+    .pulse {
+        width: 23px;
+        height: 23px;
+    }
+
+    .profile {
+        font-size: 9px;
+        padding: 5px 6px;
+    }
+
+    .nav .btn {
+        font-size: 9px;
+        padding: 5px 6px !important;
+    }
+
+    .hero h1 {
+        font-size: 26px;
+    }
+
+    .heroCard {
+        padding: 15px;
+    }
+
+    .modalBox {
+        padding: 13px;
+    }
+}
