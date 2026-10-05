@@ -184,7 +184,10 @@ function dbRowToUser(row) {
             null,
 
         createdAt:
-            row.created_at
+            row.created_at,
+
+        interests:
+            row.interests || []
     };
 }
 
@@ -220,7 +223,10 @@ function userToDbRow(user) {
 
         created_at:
             user.createdAt ||
-            new Date().toISOString()
+            new Date().toISOString(),
+
+        interests:
+            user.interests || []
     };
 }
 
@@ -1047,6 +1053,122 @@ app.post(
     }
 );
 
+// =====================================================
+// INTERESTS / PERSONALIZATION
+// =====================================================
+
+const allowedInterests = [
+    "Technology",
+    "AI",
+    "Education",
+    "Career",
+    "Jobs",
+    "Government",
+    "Business",
+    "Sports",
+    "Science",
+    "Entertainment",
+    "Startups"
+];
+
+app.get(
+    "/api/interests/:userId",
+    async (req, res) => {
+
+        try {
+
+            const user = await getUserById(req.params.userId);
+
+            if (!user) {
+
+                return res.status(404).json({
+                    success: false,
+                    message: "User not found."
+                });
+            }
+
+            res.json({
+                success: true,
+                interests: user.interests || []
+            });
+
+        } catch (error) {
+
+            console.error("Get interests error:", error);
+
+            res.status(500).json({
+                success: false,
+                message: "Unable to load interests.",
+                error: error.message
+            });
+        }
+    }
+);
+
+app.post(
+    "/api/interests",
+    async (req, res) => {
+
+        try {
+
+            const { userId, interests } = req.body;
+
+            if (!userId || !Array.isArray(interests)) {
+
+                return res.status(400).json({
+                    success: false,
+                    message: "User ID and interests array are required."
+                });
+            }
+
+            const user = await getUserById(userId);
+
+            if (!user) {
+
+                return res.status(404).json({
+                    success: false,
+                    message: "User not found."
+                });
+            }
+
+            const cleanedInterests = [
+                ...new Set(
+                    interests
+                        .map(value => String(value).trim())
+                        .map(value =>
+                            allowedInterests.find(
+                                item =>
+                                    item.toLowerCase() ===
+                                    value.toLowerCase()
+                            )
+                        )
+                        .filter(Boolean)
+                )
+            ].slice(0, 10);
+
+            const updatedUser = await updateUser({
+                ...user,
+                interests: cleanedInterests
+            });
+
+            res.json({
+                success: true,
+                message: "Interests saved successfully.",
+                interests: updatedUser.interests || []
+            });
+
+        } catch (error) {
+
+            console.error("Save interests error:", error);
+
+            res.status(500).json({
+                success: false,
+                message: "Unable to save interests.",
+                error: error.message
+            });
+        }
+    }
+);
 // =====================================================
 // SAVE STORY
 // =====================================================
