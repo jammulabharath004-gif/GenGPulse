@@ -2528,6 +2528,186 @@ document
 
 
 
+
+
+/* =====================================================
+   GEN_Z_PULSE_OPPORTUNITY_BUTTON_FIX_V1
+   ===================================================== */
+
+document.addEventListener(
+    "DOMContentLoaded",
+    () => {
+
+        const buttons =
+            document.querySelectorAll(
+                "#opportunity .apply"
+            );
+
+        const data = [
+            {
+                title: "Scholarship application",
+                description:
+                    "Explore scholarship information, eligibility and important deadlines."
+            },
+            {
+                title: "Campus opportunity",
+                description:
+                    "Explore internships, competitions and student opportunities matched to your interests."
+            },
+            {
+                title: "Student event",
+                description:
+                    "Review the event details, understand why it matters and save it for later."
+            }
+        ];
+
+        buttons.forEach(
+            (button, index) => {
+
+                if (!data[index]) {
+                    return;
+                }
+
+                button.removeAttribute(
+                    "onclick"
+                );
+
+                button.onclick = () =>
+                    openOpportunity(
+                        data[index].title,
+                        data[index].description
+                    );
+            }
+        );
+    }
+);
+
+\n/* =====================================================
+   GEN_Z_PULSE_CLICKABLE_CARDS_V1
+   ===================================================== */
+
+function makeExplainAndOpportunityCardsClickable() {
+
+    const explainCards =
+        document.querySelectorAll(
+            "#explain .card"
+        );
+
+    if (explainCards[0]) {
+
+        explainCards[0].style.cursor =
+            "pointer";
+
+        explainCards[0].addEventListener(
+            "click",
+            (event) => {
+
+                if (
+                    event.target.closest("button")
+                ) {
+                    return;
+                }
+
+                showModal(
+                    "explain"
+                );
+            }
+        );
+    }
+
+    if (explainCards[1]) {
+
+        explainCards[1].style.cursor =
+            "pointer";
+
+        explainCards[1].addEventListener(
+            "click",
+            (event) => {
+
+                if (
+                    event.target.closest("button")
+                ) {
+                    return;
+                }
+
+                showModal(
+                    "trust"
+                );
+            }
+        );
+    }
+
+    const opportunityCards =
+        document.querySelectorAll(
+            "#opportunity .opp"
+        );
+
+    const opportunities = [
+        {
+            title:
+                "Scholarship application",
+
+            description:
+                "Explore scholarship information, eligibility and important deadlines."
+        },
+
+        {
+            title:
+                "Campus opportunity",
+
+            description:
+                "Explore internships, competitions and student opportunities matched to your interests."
+        },
+
+        {
+            title:
+                "Student event",
+
+            description:
+                "Review the event details, understand why it matters and save it for later."
+        }
+    ];
+
+    opportunityCards.forEach(
+        (card, index) => {
+
+            if (!opportunities[index]) {
+                return;
+            }
+
+            card.style.cursor =
+                "pointer";
+
+            card.addEventListener(
+                "click",
+                (event) => {
+
+                    if (
+                        event.target.closest("button")
+                    ) {
+                        return;
+                    }
+
+                    openOpportunity(
+                        opportunities[index].title,
+                        opportunities[index].description
+                    );
+                }
+            );
+        }
+    );
+}
+
+document.addEventListener(
+    "DOMContentLoaded",
+    () => {
+
+        makeExplainAndOpportunityCardsClickable();
+
+    }
+);
+
+
 /* =====================================================
    GEN_Z_PULSE_FRONTEND_FIX_V2
    ===================================================== */
