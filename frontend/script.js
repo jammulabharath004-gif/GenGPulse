@@ -36,6 +36,14 @@ function saveCurrentUser(user) {
     );
 
     updateAccountUI();
+
+    if (typeof ensureRadarSection === "function") {
+        ensureRadarSection();
+    }
+
+    if (typeof loadInterestsForUser === "function") {
+        loadInterestsForUser(user);
+    }
 }
 
 
@@ -51,7 +59,13 @@ function clearCurrentUser() {
         "genGPulseUser"
     );
 
+    currentInterests = [];
+
     updateAccountUI();
+
+    if (typeof updateRadarUI === "function") {
+        updateRadarUI();
+    }
 }
 
 
@@ -2510,6 +2524,850 @@ document
             }
         }
     );
+
+
+
+
+/* =====================================================
+   GEN_Z_PULSE_FRONTEND_FIX_V2
+   ===================================================== */
+
+let currentInterests = [];
+
+const PULSE_INTERESTS = [
+    "Technology",
+    "AI",
+    "Education",
+    "Career",
+    "Jobs",
+    "Government",
+    "Business",
+    "Sports",
+    "Science",
+    "Entertainment",
+    "Startups"
+];
+
+/* =====================================================
+   SEARCH TODAY
+   ===================================================== */
+
+async function searchToday() {
+
+    const searchInput =
+        document.getElementById("search");
+
+    if (!searchInput) {
+        return;
+    }
+
+    const query =
+        searchInput.value.trim();
+
+    if (!query) {
+        toast("Enter something to search");
+        searchInput.focus();
+        return;
+    }
+
+    filter = "All";
+
+    document
+        .querySelectorAll(".filter")
+        .forEach((button) => {
+            button.classList.remove("active");
+        });
+
+    const allButton =
+        document.querySelector(
+            '.filter[onclick*="setFilter(\'All\'"]'
+        );
+
+    if (allButton) {
+        allButton.classList.add("active");
+    }
+
+    const button =
+        document.getElementById(
+            "searchTodayBtn"
+        );
+
+    if (button) {
+        button.disabled = true;
+        button.textContent = "Searching...";
+    }
+
+    try {
+
+        await loadNews(query);
+
+        toast(
+            "Latest news loaded"
+        );
+
+    } catch (error) {
+
+        console.error(
+            "Search Today error:",
+            error
+        );
+
+        toast(
+            "News search failed"
+        );
+
+    } finally {
+
+        if (button) {
+            button.disabled = false;
+            button.textContent = "Search Today";
+        }
+    }
+}
+
+/* =====================================================
+   LOAD INTERESTS FROM SUPABASE
+   ===================================================== */
+
+async function loadInterestsForUser(user) {
+
+    if (!user || !user.id) {
+
+        currentInterests = [];
+
+        updateRadarUI();
+
+        return;
+    }
+
+    try {
+
+        const response =
+            await fetch(
+                API_BASE +
+                "/api/interests/" +
+                encodeURIComponent(user.id)
+            );
+
+        const data =
+            await response.json();
+
+        if (
+            response.ok &&
+            data.success &&
+            Array.isArray(data.interests)
+        ) {
+
+            currentInterests =
+                data.interests;
+
+        } else {
+
+            currentInterests =
+                Array.isArray(user.interests)
+                    ? user.interests
+                    : [];
+        }
+
+    } catch (error) {
+
+        console.error(
+            "Load interests error:",
+            error
+        );
+
+        currentInterests =
+            Array.isArray(user.interests)
+                ? user.interests
+                : [];
+    }
+
+    currentUser.interests =
+        currentInterests;
+
+    localStorage.setItem(
+        "genGPulseUser",
+        JSON.stringify(currentUser)
+    );
+
+    ensureRadarSection();
+
+    updateRadarUI();
+
+    if (
+        currentInterests.length === 0
+    ) {
+
+        const promptKey =
+            "genZPulseInterestPrompted_" +
+            currentUser.id;
+
+        if (
+            !localStorage.getItem(promptKey)
+        ) {
+
+            localStorage.setItem(
+                promptKey,
+                "1"
+            );
+
+            setTimeout(
+                () => openInterestPicker(),
+                500
+            );
+        }
+    }
+}
+
+/* =====================================================
+   SAVE INTERESTS
+   ===================================================== */
+
+async function saveInterests() {
+
+    if (!currentUser || !currentUser.id) {
+
+        toast(
+            "Please sign in first"
+        );
+
+        return;
+    }
+
+    const selected =
+        Array.from(
+            document.querySelectorAll(
+                'input[name="pulseInterest"]:checked'
+            )
+        ).map(
+            (input) =>
+                input.value
+        );
+
+    try {
+
+        toast(
+            "Saving your interests..."
+        );
+
+        const response =
+            await fetch(
+                API_BASE +
+                "/api/interests",
+                {
+                    method: "POST",
+
+                    headers: {
+                        "Content-Type":
+                            "application/json"
+                    },
+
+                    body: JSON.stringify({
+                        userId:
+                            currentUser.id,
+
+                        interests:
+                            selected
+                    })
+                }
+            );
+
+        const data =
+            await response.json();
+
+        if (
+            !response.ok ||
+            !data.success
+        ) {
+
+            throw new Error(
+                data.message ||
+                "Unable to save interests."
+            );
+        }
+
+        currentInterests =
+            Array.isArray(data.interests)
+                ? data.interests
+                : selected;
+
+        currentUser.interests =
+            currentInterests;
+
+        localStorage.setItem(
+            "genGPulseUser",
+            JSON.stringify(currentUser)
+        );
+
+        updateRadarUI();
+
+        closeModal();
+
+        toast(
+            "Interests saved successfully"
+        );
+
+    } catch (error) {
+
+        console.error(
+            "Save interests error:",
+            error
+        );
+
+        toast(
+            error.message ||
+            "Unable to save interests"
+        );
+    }
+}
+
+/* =====================================================
+   INTEREST PICKER
+   ===================================================== */
+
+function openInterestPicker() {
+
+    if (!currentUser) {
+
+        toast(
+            "Please sign in first"
+        );
+
+        showAccount("signin");
+
+        return;
+    }
+
+    const content =
+        document.getElementById(
+            "modalContent"
+        );
+
+    const modal =
+        document.getElementById(
+            "modal"
+        );
+
+    if (!content || !modal) {
+        return;
+    }
+
+    content.innerHTML = `
+        <span class="tag">
+            Personalization
+        </span>
+
+        <h2>
+            Radar &amp; Relevance
+        </h2>
+
+        <p>
+            Choose the topics you care about.
+            Your choices are saved to your
+            Gen Z Pulse account.
+        </p>
+
+        <div
+            style="
+                display:grid;
+                grid-template-columns:
+                    repeat(2,minmax(0,1fr));
+                gap:9px;
+                margin:18px 0;
+            "
+        >
+            ${PULSE_INTERESTS.map(
+                (interest) => `
+                    <label
+                        style="
+                            display:flex;
+                            align-items:center;
+                            gap:8px;
+                            padding:11px;
+                            border:1px solid var(--border);
+                            background:var(--surface2);
+                            border-radius:11px;
+                            cursor:pointer;
+                        "
+                    >
+                        <input
+                            type="checkbox"
+                            name="pulseInterest"
+                            value="${interest}"
+                            ${currentInterests.includes(interest)
+                                ? "checked"
+                                : ""}
+                        >
+
+                        <span>
+                            ${interest}
+                        </span>
+                    </label>
+                `
+            ).join("")}
+        </div>
+
+        <button
+            class="apply"
+            type="button"
+            onclick="saveInterests()"
+        >
+            Save my interests
+        </button>
+
+        <button
+            class="action"
+            type="button"
+            onclick="closeModal()"
+        >
+            Cancel
+        </button>
+    `;
+
+    modal.classList.add(
+        "show"
+    );
+}
+
+/* =====================================================
+   CREATE RADAR SECTION
+   ===================================================== */
+
+function ensureRadarSection() {
+
+    const flash =
+        document.getElementById(
+            "flash"
+        );
+
+    const main =
+        document.querySelector(
+            "main"
+        );
+
+    if (!flash || !main) {
+        return;
+    }
+
+    if (
+        !document.getElementById(
+            "radar"
+        )
+    ) {
+
+        const radar =
+            document.createElement(
+                "section"
+            );
+
+        radar.className =
+            "section";
+
+        radar.id =
+            "radar";
+
+        radar.innerHTML = `
+            <div class="sectionHead">
+
+                <div>
+
+                    <h2>
+                        Radar &amp; Relevance
+                    </h2>
+
+                    <p>
+                        Personal topics and
+                        relevant information.
+                    </p>
+
+                </div>
+
+                <button
+                    class="action"
+                    type="button"
+                    style="width:auto"
+                    onclick="openInterestPicker()"
+                >
+                    Edit interests
+                </button>
+
+            </div>
+
+            <div
+                id="radarTopics"
+                class="mini"
+                style="margin-bottom:14px"
+            ></div>
+
+            <div
+                id="radarContent"
+                class="card"
+            ></div>
+        `;
+
+        flash.insertAdjacentElement(
+            "afterend",
+            radar
+        );
+    }
+
+    const nav =
+        document.querySelector(
+            ".navlinks"
+        );
+
+    if (
+        nav &&
+        !nav.querySelector(
+            '[data-target="radar"]'
+        )
+    ) {
+
+        const radarButton =
+            document.createElement(
+                "button"
+            );
+
+        radarButton.type =
+            "button";
+
+        radarButton.dataset.target =
+            "radar";
+
+        radarButton.textContent =
+            "Radar";
+
+        radarButton.onclick =
+            () => {
+                scrollToId("radar");
+            };
+
+        nav.appendChild(
+            radarButton
+        );
+    }
+
+    const searchArea =
+        document.querySelector(
+            ".search"
+        );
+
+    if (
+        searchArea &&
+        !document.getElementById(
+            "searchTodayBtn"
+        )
+    ) {
+
+        const button =
+            document.createElement(
+                "button"
+            );
+
+        button.id =
+            "searchTodayBtn";
+
+        button.type =
+            "button";
+
+        button.className =
+            "btn primary";
+
+        button.textContent =
+            "Search Today";
+
+        button.onclick =
+            searchToday;
+
+        button.style.whiteSpace =
+            "nowrap";
+
+        searchArea.appendChild(
+            button
+        );
+
+        const searchInput =
+            document.getElementById(
+                "search"
+            );
+
+        if (searchInput) {
+
+            searchInput.addEventListener(
+                "keydown",
+                (event) => {
+
+                    if (
+                        event.key ===
+                        "Enter"
+                    ) {
+
+                        event.preventDefault();
+
+                        searchToday();
+                    }
+                }
+            );
+        }
+    }
+
+    const opportunityButtons =
+        document.querySelectorAll(
+            "#opportunity .apply"
+        );
+
+    if (
+        opportunityButtons[0]
+    ) {
+
+        opportunityButtons[0].onclick =
+            () =>
+                openOpportunity(
+                    "Scholarship application",
+                    "Explore scholarship information, eligibility and important deadlines."
+                );
+    }
+
+    if (
+        opportunityButtons[1]
+    ) {
+
+        opportunityButtons[1].onclick =
+            () =>
+                openOpportunity(
+                    "Campus opportunity",
+                    "Explore internships, competitions and student opportunities matched to your interests."
+                );
+    }
+
+    if (
+        opportunityButtons[2]
+    ) {
+
+        opportunityButtons[2].onclick =
+            () =>
+                openOpportunity(
+                    "Student event",
+                    "Review the event details, understand why it matters and save it for later."
+                );
+    }
+
+    updateRadarUI();
+}
+
+/* =====================================================
+   UPDATE RADAR UI
+   ===================================================== */
+
+function updateRadarUI() {
+
+    const section =
+        document.getElementById(
+            "radar"
+        );
+
+    const navButton =
+        document.querySelector(
+            '.navlinks [data-target="radar"]'
+        );
+
+    if (!section) {
+        return;
+    }
+
+    if (!currentUser) {
+
+        section.style.display =
+            "none";
+
+        if (navButton) {
+            navButton.style.display =
+                "none";
+        }
+
+        return;
+    }
+
+    section.style.display =
+        "block";
+
+    if (navButton) {
+        navButton.style.display =
+            "";
+    }
+
+    const topics =
+        document.getElementById(
+            "radarTopics"
+        );
+
+    const content =
+        document.getElementById(
+            "radarContent"
+        );
+
+    if (topics) {
+
+        topics.innerHTML =
+            currentInterests.length
+                ? currentInterests
+                    .map(
+                        (interest) =>
+                            `<span class="chip">
+                                ${escapeHtml(
+                                    interest
+                                )}
+                            </span>`
+                    )
+                    .join("")
+                : `
+                    <span class="chip">
+                        No interests selected yet
+                    </span>
+                `;
+    }
+
+    if (content) {
+
+        if (
+            currentInterests.length
+        ) {
+
+            content.innerHTML = `
+                <h3>
+                    Your personalized radar
+                </h3>
+
+                <p>
+                    Your selected topics are
+                    saved to your Gen Z Pulse
+                    account.
+                </p>
+
+                <button
+                    class="action"
+                    type="button"
+                    onclick="openInterestPicker()"
+                >
+                    Change my interests
+                </button>
+            `;
+
+        } else {
+
+            content.innerHTML = `
+                <h3>
+                    Choose your interests
+                </h3>
+
+                <p>
+                    Select Technology, AI,
+                    Education, Career, Jobs,
+                    Government, Business,
+                    Sports, Science,
+                    Entertainment or Startups.
+                </p>
+
+                <button
+                    class="apply"
+                    type="button"
+                    onclick="openInterestPicker()"
+                >
+                    Choose topics
+                </button>
+            `;
+        }
+    }
+}
+
+/* =====================================================
+   OPPORTUNITY OPENING
+   ===================================================== */
+
+function openOpportunity(
+    title,
+    description
+) {
+
+    const content =
+        document.getElementById(
+            "modalContent"
+        );
+
+    const modal =
+        document.getElementById(
+            "modal"
+        );
+
+    if (!content || !modal) {
+        return;
+    }
+
+    content.innerHTML = `
+        <span class="tag">
+            Gen Z Opportunity
+        </span>
+
+        <h2>
+            ${escapeHtml(title)}
+        </h2>
+
+        <p>
+            ${escapeHtml(description)}
+        </p>
+
+        <div
+            class="card"
+            style="margin-top:16px"
+        >
+            <h3>
+                Opportunity details
+            </h3>
+
+            <p>
+                This section is now interactive.
+                It can later connect to the
+                official scholarship, internship
+                or event source.
+            </p>
+        </div>
+
+        <button
+            class="action"
+            type="button"
+            onclick="closeModal()"
+        >
+            Close
+        </button>
+    `;
+
+    modal.classList.add(
+        "show"
+    );
+}
+
+/* =====================================================
+   RADAR STARTUP
+   ===================================================== */
+
+document.addEventListener(
+    "DOMContentLoaded",
+    () => {
+
+        ensureRadarSection();
+
+        if (currentUser) {
+
+            loadInterestsForUser(
+                currentUser
+            );
+
+        } else {
+
+            updateRadarUI();
+        }
+    }
+);
 
 
 /* =====================================================
