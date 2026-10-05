@@ -1,4464 +1,1591 @@
-// =====================================================
-// GEN Z PULSE - FRONTEND
-// =====================================================
+const express = require("express");
+const cors = require("cors");
+const axios = require("axios");
+const crypto = require("crypto");
+const bcrypt = require("bcryptjs");
+const Razorpay = require("razorpay");
 
-const API_BASE =
-    "https://gengpulse-1.onrender.com";
+require("dotenv").config();
 
-const CURRENT_USER_KEY =
-    "genZPulseUser";
+const { GoogleGenerativeAI } = require("@google/generative-ai");
 
-const OLD_USER_KEY =
-    "genGPulseUser";
+const app = express();
 
-let items = [];
-
-let filter =
-    "All";
-
-let saved = [];
-
-let currentNewsIndex =
-    null;
-
-let currentUser =
-    null;
-
-let selectedInterests = [];
-
+const PORT = process.env.PORT || 3000;
 
 // =====================================================
-// LOAD SAVED USER
+// CONFIGURATION
 // =====================================================
 
-function loadSavedUser() {
+const GNEWS_API_KEY = process.env.GNEWS_API_KEY;
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
-    try {
+const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID;
+const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET;
 
-        const newUser =
-            localStorage.getItem(
-                CURRENT_USER_KEY
-            );
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_SECRET_KEY =
+    process.env.SUPABASE_SECRET_KEY;
 
-        const oldUser =
-            localStorage.getItem(
-                OLD_USER_KEY
-            );
+const GEMINI_MODEL = "gemini-3.5-flash-lite";
 
-        currentUser =
-            JSON.parse(
-                newUser ||
-                oldUser ||
-                "null"
-            );
+// =====================================================
+// SUPABASE
+// =====================================================
 
-        if (
-            currentUser &&
-            !newUser
-        ) {
+let supabase = null;
 
-            localStorage.setItem(
-                CURRENT_USER_KEY,
-                JSON.stringify(
-                    currentUser
-                )
-            );
-        }
+async function initializeSupabase() {
 
-        selectedInterests =
-            Array.isArray(
-                currentUser?.interests
-            )
-                ? currentUser.interests
-                : [];
-
-    } catch (error) {
-
-        console.error(
-            "Could not load saved user:",
-            error
+    if (
+        !SUPABASE_URL ||
+        !SUPABASE_SECRET_KEY
+    ) {
+        throw new Error(
+            "SUPABASE_URL or SUPABASE_SECRET_KEY is missing in .env"
         );
-
-        currentUser =
-            null;
-
-        selectedInterests =
-            [];
     }
-}
 
-
-loadSavedUser();
-
-
-// =====================================================
-// SAVE CURRENT USER
-// =====================================================
-
-function saveCurrentUser(
-    user
-) {
-
-    currentUser =
-        user;
-
-    selectedInterests =
-        Array.isArray(
-            user?.interests
-        )
-            ? user.interests
-            : [];
-
-    localStorage.setItem(
-        CURRENT_USER_KEY,
-        JSON.stringify(
-            user
-        )
+    const {
+        createClient
+    } = await import(
+        "@supabase/supabase-js"
     );
 
-    localStorage.setItem(
-        "genZPulseInterests",
-        JSON.stringify(
-            selectedInterests
-        )
-    );
-
-    updateAccountUI();
-
-    updateInterestSummary();
-}
-
-
-// =====================================================
-// CLEAR CURRENT USER
-// =====================================================
-
-function clearCurrentUser() {
-
-    currentUser =
-        null;
-
-    selectedInterests =
-        [];
-
-    localStorage.removeItem(
-        CURRENT_USER_KEY
-    );
-
-    localStorage.removeItem(
-        OLD_USER_KEY
-    );
-
-    localStorage.removeItem(
-        "genZPulseInterests"
-    );
-
-    updateAccountUI();
-
-    updateInterestSummary();
-}
-
-
-// =====================================================
-// UPDATE ACCOUNT UI
-// =====================================================
-
-function updateAccountUI() {
-
-    const profileButtons =
-        document.querySelectorAll(
-            ".profile"
-        );
-
-    if (
-        !profileButtons.length
-    ) {
-        return;
-    }
-
-    if (
-        currentUser
-    ) {
-
-        if (
-            profileButtons[0]
-        ) {
-
-            profileButtons[0]
-                .textContent =
-                currentUser.name ||
-                "Account";
-
-            profileButtons[0]
-                .onclick =
-                () =>
-                    showModal(
-                        "profile"
-                    );
-        }
-
-    } else {
-
-        if (
-            profileButtons[0]
-        ) {
-
-            profileButtons[0]
-                .textContent =
-                "Sign in";
-
-            profileButtons[0]
-                .onclick =
-                () =>
-                    showAccount(
-                        "signin"
-                    );
-        }
-    }
-}
-
-
-// =====================================================
-// NEWS CATEGORY
-// =====================================================
-
-function getCategory(
-    article
-) {
-
-    const text =
-        `
-            ${article.title || ""}
-            ${article.description || ""}
-            ${article.content || ""}
-        `
-            .toLowerCase();
-
-    if (
-        text.includes(
-            "technology"
-        ) ||
-        text.includes(
-            "tech"
-        ) ||
-        text.includes(
-            "ai "
-        ) ||
-        text.includes(
-            "artificial intelligence"
-        ) ||
-        text.includes(
-            "software"
-        ) ||
-        text.includes(
-            "digital"
-        ) ||
-        text.includes(
-            "startup"
-        )
-    ) {
-
-        return "Tech";
-    }
-
-    if (
-        text.includes(
-            "job"
-        ) ||
-        text.includes(
-            "career"
-        ) ||
-        text.includes(
-            "internship"
-        ) ||
-        text.includes(
-            "employment"
-        )
-    ) {
-
-        return "Career";
-    }
-
-    if (
-        text.includes(
-            "education"
-        ) ||
-        text.includes(
-            "student"
-        ) ||
-        text.includes(
-            "college"
-        ) ||
-        text.includes(
-            "university"
-        ) ||
-        text.includes(
-            "school"
-        ) ||
-        text.includes(
-            "scholarship"
-        )
-    ) {
-
-        return "Education";
-    }
-
-    return "India";
-}
-
-
-// =====================================================
-// FORMAT NEWS TIME
-// =====================================================
-
-function formatNewsTime(
-    dateString
-) {
-
-    if (
-        !dateString
-    ) {
-
-        return "Recently";
-    }
-
-    const date =
-        new Date(
-            dateString
-        );
-
-    if (
-        Number.isNaN(
-            date.getTime()
-        )
-    ) {
-
-        return "Recently";
-    }
-
-    const now =
-        new Date();
-
-    const diffMinutes =
-        Math.max(
-            0,
-            Math.floor(
-                (
-                    now -
-                    date
-                ) /
-                60000
-            )
-        );
-
-    if (
-        diffMinutes <
-        1
-    ) {
-
-        return "Just now";
-    }
-
-    if (
-        diffMinutes <
-        60
-    ) {
-
-        return `${diffMinutes} min ago`;
-    }
-
-    const diffHours =
-        Math.floor(
-            diffMinutes /
-            60
-        );
-
-    if (
-        diffHours <
-        24
-    ) {
-
-        return `${diffHours} hr${
-            diffHours > 1
-                ? "s"
-                : ""
-        } ago`;
-    }
-
-    const diffDays =
-        Math.floor(
-            diffHours /
-            24
-        );
-
-    return `${diffDays} day${
-        diffDays > 1
-            ? "s"
-            : ""
-    } ago`;
-}
-
-
-// =====================================================
-// LOAD REAL NEWS
-// =====================================================
-
-async function loadNews(
-    query = "India technology"
-) {
-
-    const cards =
-        document.getElementById(
-            "flashCards"
-        );
-
-    const empty =
-        document.getElementById(
-            "empty"
-        );
-
-    if (
-        !cards
-    ) {
-        return;
-    }
-
-    cards.innerHTML = `
-        <div class="card">
-            <h3>
-                Loading today's news...
-            </h3>
-
-            <p>
-                Please wait while
-                Gen Z Pulse loads
-                the latest news.
-            </p>
-        </div>
-    `;
-
-    try {
-
-        const response =
-            await fetch(
-                `${API_BASE}/api/news?q=${encodeURIComponent(
-                    query
-                )}`
-            );
-
-        const data =
-            await response.json();
-
-        if (
-            !response.ok ||
-            !data.success
-        ) {
-
-            throw new Error(
-                data.message ||
-                "Failed to load news."
-            );
-        }
-
-        items =
-            (data.articles || [])
-                .map(
-                    article => ({
-
-                        cat:
-                            getCategory(
-                                article
-                            ),
-
-                        tag:
-                            article
-                                .source
-                                ?.name ||
-                            "News",
-
-                        title:
-                            article.title ||
-                            "Untitled news",
-
-                        text:
-                            article.description ||
-                            article.content ||
-                            "No description available.",
-
-                        time:
-                            formatNewsTime(
-                                article.publishedAt
-                            ),
-
-                        url:
-                            article.url ||
-                            "",
-
-                        source:
-                            article
-                                .source
-                                ?.name ||
-                            "Unknown source",
-
-                        image:
-                            article.image ||
-                            ""
-                    })
-                );
-
-        renderFlash();
-
-        updateInterestSummary();
-
-    } catch (error) {
-
-        console.error(
-            "News loading error:",
-            error
-        );
-
-        cards.innerHTML = `
-            <div class="card">
-
-                <span class="tag">
-                    ERROR
-                </span>
-
-                <h3>
-                    Unable to load news
-                </h3>
-
-                <p>
-                    Gen Z Pulse could not
-                    load the latest news.
-                </p>
-
-                <button
-                    class="action"
-                    onclick="loadNews('India technology')"
-                >
-                    Try again
-                </button>
-
-            </div>
-        `;
-
-        if (
-            empty
-        ) {
-
-            empty.style.display =
-                "none";
-        }
-    }
-}
-
-
-// =====================================================
-// TODAY'S PULSE SEARCH
-// =====================================================
-
-async function searchToday() {
-
-    const searchInput =
-        document.getElementById(
-            "search"
-        );
-
-    const cards =
-        document.getElementById(
-            "flashCards"
-        );
-
-    const empty =
-        document.getElementById(
-            "empty"
-        );
-
-    if (
-        !searchInput ||
-        !cards
-    ) {
-
-        return;
-    }
-
-    const query =
-        searchInput.value
-            .trim();
-
-    if (
-        !query
-    ) {
-
-        toast(
-            "Type something to search today's pulse."
-        );
-
-        return;
-    }
-
-    cards.innerHTML = `
-        <div class="card">
-
-            <span class="tag">
-                SEARCHING
-            </span>
-
-            <h3>
-                Searching today's pulse...
-            </h3>
-
-            <p>
-                Finding fresh news for
-                "${escapeHtml(query)}"
-            </p>
-
-        </div>
-    `;
-
-    if (
-        empty
-    ) {
-
-        empty.style.display =
-            "none";
-    }
-
-    try {
-
-        const response =
-            await fetch(
-                `${API_BASE}/api/news?q=${encodeURIComponent(
-                    query
-                )}`
-            );
-
-        const data =
-            await response.json();
-
-        if (
-            !response.ok ||
-            !data.success
-        ) {
-
-            throw new Error(
-                data.message ||
-                "Search failed."
-            );
-        }
-
-        items =
-            (data.articles || [])
-                .map(
-                    article => ({
-
-                        cat:
-                            getCategory(
-                                article
-                            ),
-
-                        tag:
-                            article
-                                .source
-                                ?.name ||
-                            "News",
-
-                        title:
-                            article.title ||
-                            "Untitled news",
-
-                        text:
-                            article.description ||
-                            article.content ||
-                            "No description available.",
-
-                        time:
-                            formatNewsTime(
-                                article.publishedAt
-                            ),
-
-                        url:
-                            article.url ||
-                            "",
-
-                        source:
-                            article
-                                .source
-                                ?.name ||
-                            "Unknown source",
-
-                        image:
-                            article.image ||
-                            ""
-                    })
-                );
-
-        filter =
-            "All";
-
-        document
-            .querySelectorAll(
-                "#flash .filter"
-            )
-            .forEach(
-                button =>
-                    button.classList
-                        .remove(
-                            "active"
-                        )
-            );
-
-        document
-            .querySelector(
-                "#flash .filter"
-            )
-            ?.classList.add(
-                "active"
-            );
-
-        renderFlash();
-
-        toast(
-            `${items.length} fresh results found`
-        );
-
-    } catch (error) {
-
-        console.error(
-            "Today's pulse search error:",
-            error
-        );
-
-        cards.innerHTML = `
-            <div class="card">
-
-                <span class="tag">
-                    SEARCH ERROR
-                </span>
-
-                <h3>
-                    Today's pulse search
-                    is temporarily unavailable.
-                </h3>
-
-                <p>
-                    Please try again in
-                    a moment.
-                </p>
-
-                <button
-                    class="action"
-                    onclick="searchToday()"
-                >
-                    Try again
-                </button>
-
-            </div>
-        `;
-
-        if (
-            empty
-        ) {
-
-            empty.style.display =
-                "none";
-        }
-    }
-}
-
-
-// =====================================================
-// FILTER
-// =====================================================
-
-function setFilter(
-    value,
-    element
-) {
-
-    filter =
-        value;
-
-    document
-        .querySelectorAll(
-            "#flash .filter"
-        )
-        .forEach(
-            button =>
-                button.classList
-                    .remove(
-                        "active"
-                    )
-        );
-
-    if (
-        element
-    ) {
-
-        element.classList.add(
-            "active"
-        );
-    }
-
-    renderFlash();
-}
-
-
-// =====================================================
-// INTEREST MATCHING
-// =====================================================
-
-function interestScore(
-    item
-) {
-
-    const text =
-        `
-            ${item.title}
-            ${item.text}
-            ${item.tag}
-            ${item.source}
-            ${item.cat}
-        `
-            .toLowerCase();
-
-    let score =
-        0;
-
-    selectedInterests
-        .forEach(
-            interest => {
-
-                const value =
-                    String(
-                        interest
-                    )
-                        .toLowerCase();
-
-                if (
-                    text.includes(
-                        value
-                    )
-                ) {
-
-                    score +=
-                        10;
-                }
-
-                if (
-                    value ===
-                    "technology" &&
-                    item.cat ===
-                    "Tech"
-                ) {
-
-                    score +=
-                        15;
-                }
-
-                if (
-                    value ===
-                    "career" &&
-                    item.cat ===
-                    "Career"
-                ) {
-
-                    score +=
-                        15;
-                }
-
-                if (
-                    value ===
-                    "education" &&
-                    item.cat ===
-                    "Education"
-                ) {
-
-                    score +=
-                        15;
-                }
-
+    supabase = createClient(
+        SUPABASE_URL,
+        SUPABASE_SECRET_KEY,
+        {
+            auth: {
+                persistSession: false,
+                autoRefreshToken: false,
+                detectSessionInUrl: false
             }
-        );
-
-    return score;
-}
-
-
-// =====================================================
-// RENDER NEWS CARDS
-// =====================================================
-
-function renderFlash() {
-
-    const searchBox =
-        document.getElementById(
-            "search"
-        );
-
-    const cards =
-        document.getElementById(
-            "flashCards"
-        );
-
-    const empty =
-        document.getElementById(
-            "empty"
-        );
-
-    if (
-        !cards
-    ) {
-
-        return;
-    }
-
-    const query =
-        searchBox
-            ? searchBox.value
-                .toLowerCase()
-                .trim()
-            : "";
-
-    const list =
-        items
-            .filter(
-                item => {
-
-                    const matchesFilter =
-                        filter ===
-                            "All" ||
-                        item.cat ===
-                            filter;
-
-                    const searchableText =
-                        `
-                            ${item.title}
-                            ${item.text}
-                            ${item.tag}
-                            ${item.source}
-                            ${item.cat}
-                        `
-                            .toLowerCase();
-
-                    const matchesSearch =
-                        searchableText.includes(
-                            query
-                        );
-
-                    return (
-                        matchesFilter &&
-                        matchesSearch
-                    );
-                }
-            )
-            .sort(
-                (a, b) =>
-                    interestScore(
-                        b
-                    ) -
-                    interestScore(
-                        a
-                    )
-            );
-
-    if (
-        list.length ===
-        0
-    ) {
-
-        cards.innerHTML =
-            "";
-
-        if (
-            empty
-        ) {
-
-            empty.style.display =
-                "block";
         }
+    );
 
-        return;
-    }
-
-    if (
-        empty
-    ) {
-
-        empty.style.display =
-            "none";
-    }
-
-    cards.innerHTML =
-        list
-            .map(
-                item => {
-
-                    const originalIndex =
-                        items.indexOf(
-                            item
-                        );
-
-                    return `
-                        <article class="card">
-
-                            ${
-                                item.image
-                                    ? `
-                                        <img
-                                            src="${escapeHtml(
-                                                item.image
-                                            )}"
-                                            alt=""
-                                            class="news-card-image"
-                                            onerror="this.style.display='none'"
-                                        >
-                                    `
-                                    : ""
-                            }
-
-                            <span class="tag">
-                                ${escapeHtml(
-                                    item.tag
-                                )}
-                                ·
-                                ${escapeHtml(
-                                    item.cat
-                                )}
-                            </span>
-
-                            <h3>
-                                ${escapeHtml(
-                                    item.title
-                                )}
-                            </h3>
-
-                            <p>
-                                ${escapeHtml(
-                                    item.text
-                                )}
-                            </p>
-
-                            <div class="meta">
-
-                                <span>
-                                    ${escapeHtml(
-                                        item.time
-                                    )}
-                                </span>
-
-                                <span>
-                                    ${escapeHtml(
-                                        item.source
-                                    )}
-                                </span>
-
-                            </div>
-
-                            <button
-                                class="action"
-                                onclick="showNews(${originalIndex})"
-                            >
-                                Read more
-                            </button>
-
-                            <button
-                                class="action"
-                                onclick="saveItem(${originalIndex})"
-                            >
-                                ☆ Save
-                            </button>
-
-                        </article>
-                    `;
-                }
-            )
-            .join("");
-}
-
-
-// =====================================================
-// NEWS MODAL
-// =====================================================
-
-function showNews(
-    index
-) {
-
-    const item =
-        items[index];
-
-    if (
-        !item
-    ) {
-
-        return;
-    }
-
-    currentNewsIndex =
-        index;
-
-    const content =
-        document.getElementById(
-            "modalContent"
-        );
-
-    const modal =
-        document.getElementById(
-            "modal"
-        );
-
-    if (
-        !content ||
-        !modal
-    ) {
-
-        return;
-    }
-
-    content.innerHTML = `
-
-        <span class="tag">
-            ${escapeHtml(
-                item.tag
-            )}
-            ·
-            ${escapeHtml(
-                item.cat
-            )}
-        </span>
-
-        <h2>
-            ${escapeHtml(
-                item.title
-            )}
-        </h2>
-
-        ${
-            item.image
-                ? `
-                    <img
-                        src="${escapeHtml(
-                            item.image
-                        )}"
-                        alt=""
-                        class="news-card-image"
-                        onerror="this.style.display='none'"
-                    >
-                `
-                : ""
-        }
-
-        <div class="news-source-box">
-
-            <strong>
-                Source:
-            </strong>
-
-            ${escapeHtml(
-                item.source
-            )}
-
-            <br>
-
-            <strong>
-                Published:
-            </strong>
-
-            ${escapeHtml(
-                item.time
-            )}
-
-        </div>
-
-        <div
-            style="margin-top:20px"
-        >
-
-            <button
-                class="action"
-                onclick="generateAISummary(${index})"
-            >
-                🤖 AI Generated Summary
-            </button>
-
-            <button
-                class="action"
-                onclick="generateAIExplain(${index})"
-            >
-                🤖 Gen Z Explain
-            </button>
-
-            <button
-                class="action"
-                onclick="openFullArticle(${index})"
-                ${item.url ? "" : "disabled"}
-            >
-                📰 Read Full Article
-            </button>
-
-            <button
-                class="action"
-                onclick="closeModal()"
-            >
-                ✕ Close
-            </button>
-
-        </div>
-
-        <div
-            id="aiSummary"
-            style="margin-top:20px"
-        ></div>
-
-        <div
-            id="aiExplain"
-            style="margin-top:20px"
-        ></div>
-    `;
-
-    modal.classList.add(
-        "show"
+    console.log(
+        "Supabase database configuration loaded."
     );
 }
 
-
 // =====================================================
-// OPEN ORIGINAL ARTICLE
+// GEMINI CONFIGURATION
 // =====================================================
 
-function openFullArticle(
-    index
-) {
+let geminiModel = null;
 
-    const item =
-        items[index];
+if (GEMINI_API_KEY) {
 
-    if (
-        !item ||
-        !item.url
-    ) {
-
-        toast(
-            "Original article unavailable."
+    const genAI =
+        new GoogleGenerativeAI(
+            GEMINI_API_KEY
         );
 
-        return;
-    }
+    geminiModel =
+        genAI.getGenerativeModel({
+            model:
+                GEMINI_MODEL
+        });
 
-    window.open(
-        item.url,
-        "_blank",
-        "noopener,noreferrer"
+} else {
+
+    console.log(
+        "Gemini API key is missing."
     );
 }
 
-
 // =====================================================
-// GEMINI AI SUMMARY
+// RAZORPAY CONFIGURATION
 // =====================================================
 
-async function generateAISummary(
-    index
+let razorpay = null;
+
+if (
+    RAZORPAY_KEY_ID &&
+    RAZORPAY_KEY_SECRET
 ) {
 
-    const item =
-        items[index];
+    razorpay =
+        new Razorpay({
+            key_id:
+                RAZORPAY_KEY_ID,
 
-    const summaryBox =
-        document.getElementById(
-            "aiSummary"
+            key_secret:
+                RAZORPAY_KEY_SECRET
+        });
+
+    console.log(
+        "Razorpay configuration loaded."
+    );
+
+} else {
+
+    console.log(
+        "Razorpay keys are missing."
+    );
+}
+
+// =====================================================
+// MIDDLEWARE
+// =====================================================
+
+app.use(cors());
+
+app.use(
+    express.json()
+);
+
+// =====================================================
+// DATABASE HELPERS
+// =====================================================
+
+function ensureDatabase() {
+
+    if (!supabase) {
+        throw new Error(
+            "Supabase is not initialized."
         );
-
-    if (
-        !item ||
-        !summaryBox
-    ) {
-
-        return;
-    }
-
-    summaryBox.innerHTML = `
-
-        <div class="ai-summary-block">
-
-            <h3>
-                🤖 AI Generated Summary
-            </h3>
-
-            <p>
-                Gemini is analyzing
-                this article...
-            </p>
-
-        </div>
-    `;
-
-    try {
-
-        const response =
-            await fetch(
-                `${API_BASE}/api/analyze-news`,
-                {
-                    method:
-                        "POST",
-
-                    headers: {
-                        "Content-Type":
-                            "application/json"
-                    },
-
-                    body:
-                        JSON.stringify({
-                            title:
-                                item.title,
-
-                            source:
-                                item.source,
-
-                            description:
-                                item.text,
-
-                            content:
-                                item.text,
-
-                            url:
-                                item.url
-                        })
-                }
-            );
-
-        const data =
-            await response.json();
-
-        if (
-            !response.ok ||
-            !data.success
-        ) {
-
-            throw new Error(
-                data.message ||
-                "AI analysis failed."
-            );
-        }
-
-        summaryBox.innerHTML =
-            formatAIResponse(
-                data.analysis ||
-                data.aiResponse ||
-                "",
-                "🤖 AI Generated Summary"
-            );
-
-    } catch (
-        error
-    ) {
-
-        console.error(
-            "AI summary error:",
-            error
-        );
-
-        summaryBox.innerHTML = `
-
-            <div class="ai-summary-block">
-
-                <h3>
-                    🤖 AI Generated Summary
-                </h3>
-
-                <p>
-                    Gemini could not
-                    analyze this article
-                    right now.
-                </p>
-
-                <button
-                    class="action"
-                    onclick="generateAISummary(${index})"
-                >
-                    Try AI Summary Again
-                </button>
-
-            </div>
-        `;
     }
 }
 
+// -----------------------------------------------------
+// Convert database row → application user
+// -----------------------------------------------------
 
-// =====================================================
-// GEN Z EXPLAIN
-// =====================================================
+function dbRowToUser(row) {
 
-async function generateAIExplain(
-    index
-) {
-
-    const item =
-        items[index];
-
-    const explainBox =
-        document.getElementById(
-            "aiExplain"
-        );
-
-    if (
-        !item ||
-        !explainBox
-    ) {
-
-        return;
+    if (!row) {
+        return null;
     }
 
-    explainBox.innerHTML = `
+    return {
 
-        <div class="ai-summary-block">
+        id:
+            row.id,
 
-            <h3>
-                🤖 Gen Z Explain
-            </h3>
+        name:
+            row.name,
 
-            <p>
-                Gemini is explaining
-                this news in simple
-                language...
-            </p>
+        email:
+            row.email,
 
-        </div>
-    `;
+        password:
+            row.password,
 
-    try {
+        savedStories:
+            row.saved_stories || [],
 
-        const response =
-            await fetch(
-                `${API_BASE}/api/analyze-news`,
-                {
-                    method:
-                        "POST",
+        subscription:
+            row.subscription || "free",
 
-                    headers: {
-                        "Content-Type":
-                            "application/json"
-                    },
+        subscriptionDetails:
+            row.subscription_details ||
+            null,
 
-                    body:
-                        JSON.stringify({
-                            title:
-                                item.title,
-
-                            source:
-                                item.source,
-
-                            description:
-                                item.text,
-
-                            content:
-                                item.text,
-
-                            url:
-                                item.url
-                        })
-                }
-            );
-
-        const data =
-            await response.json();
-
-        if (
-            !response.ok ||
-            !data.success
-        ) {
-
-            throw new Error(
-                data.message ||
-                "AI explanation failed."
-            );
-        }
-
-        explainBox.innerHTML =
-            formatAIResponse(
-                data.analysis ||
-                data.aiResponse ||
-                "",
-                "🤖 Gen Z Explain"
-            );
-
-    } catch (
-        error
-    ) {
-
-        console.error(
-            "Gen Z Explain error:",
-            error
-        );
-
-        explainBox.innerHTML = `
-
-            <div class="ai-summary-block">
-
-                <h3>
-                    🤖 Gen Z Explain
-                </h3>
-
-                <p>
-                    Gemini could not
-                    explain this article
-                    right now.
-                </p>
-
-                <button
-                    class="action"
-                    onclick="generateAIExplain(${index})"
-                >
-                    Try Gen Z Explain Again
-                </button>
-
-            </div>
-        `;
-    }
-}
-
-
-// =====================================================
-// FORMAT AI RESPONSE
-// =====================================================
-
-function formatAIResponse(
-    text,
-    heading =
-        "🤖 AI Generated Summary"
-) {
-
-    if (
-        !text
-    ) {
-
-        return `
-
-            <div class="ai-summary-block">
-
-                <h3>
-                    ${heading}
-                </h3>
-
-                <p>
-                    No AI response
-                    was returned.
-                </p>
-
-            </div>
-        `;
-    }
-
-    const cleaned =
-        text
-            .replace(
-                /\r/g,
-                ""
-            )
-            .trim();
-
-    const sections = {
-
-        "WHAT HAPPENED?":
-            "",
-
-        "WHY DOES IT MATTER?":
-            "",
-
-        "KEY POINTS:":
-            "",
-
-        "WHAT SHOULD YOU KNOW?":
-            ""
+        createdAt:
+            row.created_at
     };
+}
 
-    const headings =
-        Object.keys(
-            sections
+// -----------------------------------------------------
+// Convert application user → database row
+// -----------------------------------------------------
+
+function userToDbRow(user) {
+
+    return {
+
+        id:
+            user.id,
+
+        name:
+            user.name,
+
+        email:
+            user.email,
+
+        password:
+            user.password,
+
+        saved_stories:
+            user.savedStories || [],
+
+        subscription:
+            user.subscription || "free",
+
+        subscription_details:
+            user.subscriptionDetails ||
+            null,
+
+        created_at:
+            user.createdAt ||
+            new Date().toISOString()
+    };
+}
+
+// -----------------------------------------------------
+// Find user by ID
+// -----------------------------------------------------
+
+async function getUserById(userId) {
+
+    ensureDatabase();
+
+    const {
+        data,
+        error
+    } = await supabase
+        .from("users")
+        .select("*")
+        .eq("id", userId)
+        .maybeSingle();
+
+    if (error) {
+        throw error;
+    }
+
+    return dbRowToUser(data);
+}
+
+// -----------------------------------------------------
+// Find user by email
+// -----------------------------------------------------
+
+async function getUserByEmail(email) {
+
+    ensureDatabase();
+
+    const {
+        data,
+        error
+    } = await supabase
+        .from("users")
+        .select("*")
+        .eq(
+            "email",
+            email.toLowerCase()
+        )
+        .maybeSingle();
+
+    if (error) {
+        throw error;
+    }
+
+    return dbRowToUser(data);
+}
+
+// -----------------------------------------------------
+// Create user
+// -----------------------------------------------------
+
+async function createUser(user) {
+
+    ensureDatabase();
+
+    const {
+        data,
+        error
+    } = await supabase
+        .from("users")
+        .insert(
+            userToDbRow(user)
+        )
+        .select("*")
+        .single();
+
+    if (error) {
+        throw error;
+    }
+
+    return dbRowToUser(data);
+}
+
+// -----------------------------------------------------
+// Update user
+// -----------------------------------------------------
+
+async function updateUser(user) {
+
+    ensureDatabase();
+
+    const {
+        data,
+        error
+    } = await supabase
+        .from("users")
+        .update(
+            userToDbRow(user)
+        )
+        .eq(
+            "id",
+            user.id
+        )
+        .select("*")
+        .single();
+
+    if (error) {
+        throw error;
+    }
+
+    return dbRowToUser(data);
+}
+
+// =====================================================
+// GEMINI AI HELPER
+// =====================================================
+
+async function generateGeminiContent(
+    prompt
+) {
+
+    if (!geminiModel) {
+
+        throw new Error(
+            "GEMINI_API_KEY is missing."
         );
+    }
 
-    let currentHeading =
-        null;
+    try {
 
-    const lines =
-        cleaned.split(
-            "\n"
-        );
-
-    for (
-        let line of lines
-    ) {
-
-        line =
-            line.trim();
-
-        if (
-            !line
-        ) {
-
-            continue;
-        }
-
-        const detectedHeading =
-            headings.find(
-                item =>
-                    line
-                        .toUpperCase() ===
-                    item
+        const result =
+            await geminiModel.generateContent(
+                prompt
             );
 
-        if (
-            detectedHeading
-        ) {
+        const response =
+            result.response;
 
-            currentHeading =
-                detectedHeading;
+        const text =
+            response.text();
 
-            continue;
+        return text;
+
+    } catch (error) {
+
+        console.error(
+            "Gemini error:"
+        );
+
+        console.error(
+            error.message
+        );
+
+        throw error;
+    }
+}
+
+// =====================================================
+// HOME
+// =====================================================
+
+app.get(
+    "/",
+    (req, res) => {
+
+        res.json({
+            success:
+                true,
+
+            message:
+                "Gen Z Pulse Backend is running!",
+
+            version:
+                "2.0.0"
+        });
+    }
+);
+
+// =====================================================
+// HEALTH CHECK
+// =====================================================
+
+app.get(
+    "/api/health",
+    (req, res) => {
+
+        res.json({
+
+            success:
+                true,
+
+            status:
+                "healthy",
+
+            service:
+                "Gen Z Pulse API",
+
+            database:
+                supabase
+                    ? "connected"
+                    : "not initialized"
+        });
+    }
+);
+
+// =====================================================
+// SUPABASE TEST
+// =====================================================
+
+app.get(
+    "/api/db-test",
+    async (req, res) => {
+
+        try {
+
+            ensureDatabase();
+
+            const {
+                data,
+                error
+            } = await supabase
+                .from("users")
+                .select("id")
+                .limit(1);
+
+            if (error) {
+                throw error;
+            }
+
+            res.json({
+
+                success:
+                    true,
+
+                message:
+                    "Supabase database connection successful.",
+
+                rows:
+                    data.length
+            });
+
+        } catch (error) {
+
+            console.error(
+                "Database test failed:",
+                error
+            );
+
+            res.status(500).json({
+
+                success:
+                    false,
+
+                message:
+                    "Supabase database connection failed.",
+
+                error:
+                    error.message
+            });
         }
-
-        if (
-            currentHeading
-        ) {
-
-            sections[
-                currentHeading
-            ] +=
-                (
-                    sections[
-                        currentHeading
-                    ]
-                        ? "\n"
-                        : ""
-                ) +
-                line;
-        }
     }
+);
 
-    let html = `
+// =====================================================
+// GEMINI AI TEST
+// =====================================================
 
-        <div class="ai-summary-block">
+app.get(
+    "/api/ai-test",
+    async (req, res) => {
 
-            <h3>
-                ${escapeHtml(
-                    heading
-                )}
-            </h3>
+        try {
 
-        </div>
-    `;
+            const prompt =
+                "Say exactly: Gemini AI connection successful.";
 
-    if (
-        sections[
-            "WHAT HAPPENED?"
-        ]
-    ) {
-
-        html += `
-
-            <div class="ai-summary-block">
-
-                <h3>
-                    WHAT HAPPENED?
-                </h3>
-
-                <p>
-                    ${formatText(
-                        sections[
-                            "WHAT HAPPENED?"
-                        ]
-                    )}
-                </p>
-
-            </div>
-        `;
-    }
-
-    if (
-        sections[
-            "WHY DOES IT MATTER?"
-        ]
-    ) {
-
-        html += `
-
-            <div class="ai-summary-block">
-
-                <h3>
-                    WHY DOES IT MATTER?
-                </h3>
-
-                <p>
-                    ${formatText(
-                        sections[
-                            "WHY DOES IT MATTER?"
-                        ]
-                    )}
-                </p>
-
-            </div>
-        `;
-    }
-
-    if (
-        sections[
-            "KEY POINTS:"
-        ]
-    ) {
-
-        const points =
-            sections[
-                "KEY POINTS:"
-            ]
-                .split(
-                    "\n"
-                )
-                .map(
-                    point =>
-                        point
-                            .replace(
-                                /^[*\-•]\s*/,
-                                ""
-                            )
-                            .trim()
-                )
-                .filter(
-                    Boolean
+            const aiResponse =
+                await generateGeminiContent(
+                    prompt
                 );
 
-        html += `
+            res.json({
 
-            <div class="ai-summary-block">
+                success:
+                    true,
 
-                <h3>
-                    KEY POINTS
-                </h3>
+                message:
+                    "Gemini AI is working!",
 
-                <ul
-                    style="
-                        color:var(--muted);
-                        line-height:1.7;
-                        padding-left:20px
-                    "
-                >
+                aiResponse:
+                    aiResponse
+            });
 
-                    ${points
-                        .map(
-                            point =>
-                                `<li>${escapeHtml(
-                                    point
-                                )}</li>`
-                        )
-                        .join("")}
+        } catch (error) {
 
-                </ul>
+            console.error(
+                "AI test failed:",
+                error.message
+            );
 
-            </div>
-        `;
+            res.status(503).json({
+
+                success:
+                    false,
+
+                message:
+                    "Gemini AI is temporarily unavailable.",
+
+                error:
+                    error.message
+            });
+        }
     }
-
-    if (
-        sections[
-            "WHAT SHOULD YOU KNOW?"
-        ]
-    ) {
-
-        html += `
-
-            <div class="ai-summary-block">
-
-                <h3>
-                    WHAT SHOULD YOU KNOW?
-                </h3>
-
-                <p>
-                    ${formatText(
-                        sections[
-                            "WHAT SHOULD YOU KNOW?"
-                        ]
-                    )}
-                </p>
-
-            </div>
-        `;
-    }
-
-    return html;
-}
-
+);
 
 // =====================================================
-// TEXT FORMAT
+// GNEWS API
 // =====================================================
 
-function formatText(
-    text
-) {
+app.get(
+    "/api/news",
+    async (req, res) => {
 
-    return escapeHtml(
-        text
-    )
-        .replace(
-            /\n/g,
-            "<br>"
-        );
-}
+        try {
 
+            const query =
+                req.query.q ||
+                "India technology";
 
-// =====================================================
-// HTML ESCAPE
-// =====================================================
+            if (!GNEWS_API_KEY) {
 
-function escapeHtml(
-    value
-) {
+                return res.status(500).json({
 
-    return String(
-        value ?? ""
-    )
-        .replace(
-            /&/g,
-            "&amp;"
-        )
-        .replace(
-            /</g,
-            "&lt;"
-        )
-        .replace(
-            />/g,
-            "&gt;"
-        )
-        .replace(
-            /"/g,
-            "&quot;"
-        )
-        .replace(
-            /'/g,
-            "&#039;"
-        );
-}
+                    success:
+                        false,
 
+                    message:
+                        "GNews API key is missing."
+                });
+            }
 
-// =====================================================
-// ACCOUNT MODAL
-// =====================================================
+            const response =
+                await axios.get(
+                    "https://gnews.io/api/v4/search",
+                    {
+                        params: {
 
-function showAccount(
-    type
-) {
+                            q:
+                                query,
 
-    const content =
-        document.getElementById(
-            "modalContent"
-        );
+                            lang:
+                                "en",
 
-    const modal =
-        document.getElementById(
-            "modal"
-        );
+                            country:
+                                "in",
 
-    if (
-        !content ||
-        !modal
-    ) {
+                            max:
+                                10,
 
-        return;
+                            apikey:
+                                GNEWS_API_KEY
+                        }
+                    }
+                );
+
+            res.json({
+
+                success:
+                    true,
+
+                query:
+                    query,
+
+                totalArticles:
+                    response
+                        .data
+                        .totalArticles,
+
+                articles:
+                    response
+                        .data
+                        .articles
+            });
+
+        } catch (error) {
+
+            console.error(
+                "GNews error:",
+                error.response?.data ||
+                error.message
+            );
+
+            res.status(500).json({
+
+                success:
+                    false,
+
+                message:
+                    "Unable to fetch news.",
+
+                error:
+                    error.response?.data ||
+                    error.message
+            });
+        }
     }
+);
 
+// =====================================================
+// AI NEWS ANALYSIS
+// =====================================================
 
-    // =================================================
-    // SIGN IN
-    // =================================================
+app.post(
+    "/api/analyze-news",
+    async (req, res) => {
 
-    if (
-        type ===
-        "signin"
-    ) {
+        try {
 
-        content.innerHTML = `
+            const {
+                title,
+                description,
+                content,
+                source,
+                url
+            } = req.body;
 
-            <span class="tag">
-                Account
-            </span>
+            if (
+                !title &&
+                !description
+            ) {
 
-            <h2>
-                Sign in to Gen Z Pulse
-            </h2>
+                return res.status(400).json({
 
-            <p>
-                Sign in to continue
-                and choose the topics
-                you care about.
-            </p>
+                    success:
+                        false,
 
-            <input
-                id="signinEmail"
-                type="email"
-                placeholder="Email address"
-                autocomplete="email"
-                style="
-                    width:100%;
-                    border:1px solid var(--border);
-                    background:var(--surface);
-                    color:var(--text);
-                    border-radius:10px;
-                    padding:12px;
-                    margin:8px 0
-                "
-            >
+                    message:
+                        "News title or description is required."
+                });
+            }
 
-            <input
-                id="signinPassword"
-                type="password"
-                placeholder="Password"
-                autocomplete="current-password"
-                style="
-                    width:100%;
-                    border:1px solid var(--border);
-                    background:var(--surface);
-                    color:var(--text);
-                    border-radius:10px;
-                    padding:12px;
-                    margin:8px 0
-                "
-            >
+            const cleanTitle =
+                title ||
+                "News update";
 
-            <button
-                class="action"
-                onclick="signInUser()"
-            >
-                Sign in
-            </button>
+            const cleanDescription =
+                description ||
+                "";
 
-            <p
-                style="
-                    text-align:center;
-                    font-size:13px;
-                    margin-top:16px
-                "
-            >
-                New here?
+            const cleanContent =
+                content ||
+                "";
 
-                <button
-                    onclick="showAccount('signup')"
-                    style="
-                        border:0;
-                        background:none;
-                        color:var(--accent);
-                        font-weight:800;
-                        cursor:pointer;
-                        padding:0
-                    "
-                >
-                    Create an account
-                </button>
-            </p>
-        `;
+            const cleanSource =
+                typeof source === "object"
+                    ? source.name ||
+                      "Unknown source"
+                    : source ||
+                      "Unknown source";
 
+            const articleText =
+                cleanContent
+                    ? cleanContent.substring(
+                        0,
+                        4000
+                    )
+                    : cleanDescription.substring(
+                        0,
+                        2000
+                    );
+
+            const prompt = `
+You are the AI news explainer for Gen Z Pulse.
+
+Explain the following news article in simple language for Indian students and young adults.
+
+NEWS TITLE:
+${cleanTitle}
+
+SOURCE:
+${cleanSource}
+
+DESCRIPTION:
+${cleanDescription}
+
+ARTICLE CONTENT:
+${articleText}
+
+Return the answer using exactly these four sections:
+
+WHAT HAPPENED?
+Give a simple 2-3 sentence explanation.
+
+WHY DOES IT MATTER?
+Explain why this news is important in 2-3 sentences.
+
+KEY POINTS:
+Give 3 short bullet points.
+
+WHAT SHOULD YOU KNOW?
+Give a short practical takeaway in 1-2 sentences.
+
+Do not invent facts.
+Do not make predictions.
+Do not give financial or medical advice.
+Use only information supported by the provided article.
+`;
+
+            const aiResponse =
+                await generateGeminiContent(
+                    prompt
+                );
+
+            res.json({
+
+                success:
+                    true,
+
+                title:
+                    cleanTitle,
+
+                source:
+                    cleanSource,
+
+                url:
+                    url || "",
+
+                analysis:
+                    aiResponse,
+
+                aiResponse:
+                    aiResponse
+            });
+
+        } catch (error) {
+
+            console.error(
+                "News analysis failed:",
+                error.message
+            );
+
+            res.status(503).json({
+
+                success:
+                    false,
+
+                message:
+                    "Gemini AI is temporarily busy. Please try again later.",
+
+                retryable:
+                    true
+            });
+        }
     }
-
-
-    // =================================================
-    // SIGN UP
-    // =================================================
-
-    else if (
-        type ===
-        "signup"
-    ) {
-
-        content.innerHTML = `
-
-            <span class="tag">
-                Create Account
-            </span>
-
-            <h2>
-                Join Gen Z Pulse
-            </h2>
-
-            <p>
-                Create your account,
-                then choose your
-                favourite topics.
-            </p>
-
-            <input
-                id="signupName"
-                type="text"
-                placeholder="Full name"
-                autocomplete="name"
-                style="
-                    width:100%;
-                    border:1px solid var(--border);
-                    background:var(--surface);
-                    color:var(--text);
-                    border-radius:10px;
-                    padding:12px;
-                    margin:8px 0
-                "
-            >
-
-            <input
-                id="signupEmail"
-                type="email"
-                placeholder="Email address"
-                autocomplete="email"
-                style="
-                    width:100%;
-                    border:1px solid var(--border);
-                    background:var(--surface);
-                    color:var(--text);
-                    border-radius:10px;
-                    padding:12px;
-                    margin:8px 0
-                "
-            >
-
-            <input
-                id="signupPassword"
-                type="password"
-                placeholder="Password"
-                autocomplete="new-password"
-                style="
-                    width:100%;
-                    border:1px solid var(--border);
-                    background:var(--surface);
-                    color:var(--text);
-                    border-radius:10px;
-                    padding:12px;
-                    margin:8px 0
-                "
-            >
-
-            <button
-                class="action"
-                onclick="signUpUser()"
-            >
-                Create account
-            </button>
-
-            <p
-                style="
-                    text-align:center;
-                    font-size:13px;
-                    margin-top:16px
-                "
-            >
-                Already have an account?
-
-                <button
-                    onclick="showAccount('signin')"
-                    style="
-                        border:0;
-                        background:none;
-                        color:var(--accent);
-                        font-weight:800;
-                        cursor:pointer;
-                        padding:0
-                    "
-                >
-                    Sign in
-                </button>
-            </p>
-        `;
-    }
-
-
-    // =================================================
-    // SUBSCRIBE
-    // =================================================
-
-    else if (
-        type ===
-        "subscribe"
-    ) {
-
-        content.innerHTML = `
-
-            <span class="tag">
-                Gen Z Pulse Plus
-            </span>
-
-            <h2>
-                Choose your plan
-            </h2>
-
-            <p>
-                Start with Free or upgrade
-                to Plus for a more
-                personalized Gen Z Pulse
-                experience.
-            </p>
-
-            <div
-                class="cards"
-                style="
-                    grid-template-columns:1fr 1fr;
-                    margin-top:16px
-                "
-            >
-
-                <div class="card">
-
-                    <span class="tag">
-                        Free
-                    </span>
-
-                    <h3>
-                        Free
-                    </h3>
-
-                    <p>
-                        Core news, Gen Z Flash,
-                        basic explanations and
-                        saved stories.
-                    </p>
-
-                    <ul
-                        style="
-                            color:var(--muted);
-                            line-height:1.8;
-                            padding-left:20px
-                        "
-                    >
-
-                        <li>
-                            Daily pulse
-                        </li>
-
-                        <li>
-                            Basic explanations
-                        </li>
-
-                        <li>
-                            Save stories
-                        </li>
-
-                    </ul>
-
-                    <button
-                        class="action"
-                        onclick="
-                            toast('Free plan selected');
-                            closeModal()
-                        "
-                    >
-                        Continue with Free
-                    </button>
-
-                </div>
-
-
-                <div
-                    class="card"
-                    style="
-                        border-color:var(--accent)
-                    "
-                >
-
-                    <span class="tag">
-                        Plus
-                    </span>
-
-                    <h3>
-                        ₹99
-                    </h3>
-
-                    <p>
-                        Enhanced personalization
-                        and deeper AI-powered
-                        explanations.
-                    </p>
-
-                    <ul
-                        style="
-                            color:var(--muted);
-                            line-height:1.8;
-                            padding-left:20px
-                        "
-                    >
-
-                        <li>
-                            Personalized topics
-                        </li>
-
-                        <li>
-                            Deeper explanations
-                        </li>
-
-                        <li>
-                            Enhanced saved content
-                        </li>
-
-                    </ul>
-
-                    <button
-                        class="apply"
-                        onclick="startPlusCheckout()"
-                    >
-                        Subscribe to Plus →
-                    </button>
-
-                </div>
-
-            </div>
-
-            <p
-                style="
-                    font-size:12px;
-                    margin-top:16px
-                "
-            >
-                Payments are processed securely
-                through Razorpay.
-            </p>
-        `;
-    }
-
-    modal.classList.add(
-        "show"
-    );
-}
-
+);
 
 // =====================================================
 // SIGN UP
 // =====================================================
 
-async function signUpUser() {
+app.post(
+    "/api/signup",
+    async (req, res) => {
 
-    const name =
-        document
-            .getElementById(
-                "signupName"
-            )
-            ?.value
-            .trim();
+        try {
 
-    const email =
-        document
-            .getElementById(
-                "signupEmail"
-            )
-            ?.value
-            .trim();
+            const {
+                name,
+                email,
+                password
+            } = req.body;
 
-    const password =
-        document
-            .getElementById(
-                "signupPassword"
-            )
-            ?.value;
+            if (
+                !name ||
+                !email ||
+                !password
+            ) {
 
-    if (
-        !name ||
-        !email ||
-        !password
-    ) {
+                return res.status(400).json({
 
-        toast(
-            "Please fill all fields."
-        );
+                    success:
+                        false,
 
-        return;
-    }
+                    message:
+                        "Name, email and password are required."
+                });
+            }
 
-    if (
-        password.length <
-        6
-    ) {
+            const cleanName =
+                String(name).trim();
 
-        toast(
-            "Password must be at least 6 characters."
-        );
+            const cleanEmail =
+                String(email)
+                    .trim()
+                    .toLowerCase();
 
-        return;
-    }
+            if (
+                cleanName.length === 0 ||
+                cleanEmail.length === 0
+            ) {
 
-    try {
+                return res.status(400).json({
 
-        toast(
-            "Creating your account..."
-        );
+                    success:
+                        false,
 
-        const response =
-            await fetch(
-                `${API_BASE}/api/signup`,
-                {
-                    method:
-                        "POST",
+                    message:
+                        "Name and email cannot be empty."
+                });
+            }
 
-                    headers: {
-                        "Content-Type":
-                            "application/json"
-                    },
-
-                    body:
-                        JSON.stringify({
-                            name,
-                            email,
-                            password
-                        })
-                }
-            );
-
-        const data =
-            await response.json();
-
-        if (
-            !response.ok ||
-            !data.success
-        ) {
-
-            toast(
-                data.message ||
-                "Account creation failed."
-            );
-
-            return;
-        }
-
-        saveCurrentUser(
-            data.user
-        );
-
-        closeModal();
-
-        toast(
-            `Welcome to Gen Z Pulse, ${
-                data.user.name
-            }!`
-        );
-
-        setTimeout(
-            () => {
-
-                openInterestPicker(
-                    true
+            const existingUser =
+                await getUserByEmail(
+                    cleanEmail
                 );
 
-            },
-            350
-        );
+            if (existingUser) {
 
-    } catch (
-        error
-    ) {
+                return res.status(409).json({
 
-        console.error(
-            "Sign up error:",
-            error
-        );
+                    success:
+                        false,
 
-        toast(
-            "Cannot connect to Gen Z Pulse server."
-        );
+                    message:
+                        "An account with this email already exists."
+                });
+            }
+
+            const hashedPassword =
+                await bcrypt.hash(
+                    password,
+                    10
+                );
+
+            const newUser = {
+
+                id:
+                    crypto.randomUUID(),
+
+                name:
+                    cleanName,
+
+                email:
+                    cleanEmail,
+
+                password:
+                    hashedPassword,
+
+                savedStories:
+                    [],
+
+                subscription:
+                    "free",
+
+                subscriptionDetails:
+                    null,
+
+                createdAt:
+                    new Date().toISOString()
+            };
+
+            const savedUser =
+                await createUser(
+                    newUser
+                );
+
+            res.status(201).json({
+
+                success:
+                    true,
+
+                message:
+                    "Account created successfully.",
+
+                user: {
+
+                    id:
+                        savedUser.id,
+
+                    name:
+                        savedUser.name,
+
+                    email:
+                        savedUser.email,
+
+                    subscription:
+                        savedUser.subscription
+                }
+            });
+
+        } catch (error) {
+
+            console.error(
+                "Signup error:",
+                error
+            );
+
+            res.status(500).json({
+
+                success:
+                    false,
+
+                message:
+                    "Unable to create account.",
+
+                error:
+                    error.message
+            });
+        }
     }
-}
-
+);
 
 // =====================================================
 // SIGN IN
 // =====================================================
 
-async function signInUser() {
-
-    const email =
-        document
-            .getElementById(
-                "signinEmail"
-            )
-            ?.value
-            .trim();
-
-    const password =
-        document
-            .getElementById(
-                "signinPassword"
-            )
-            ?.value;
-
-    if (
-        !email ||
-        !password
-    ) {
-
-        toast(
-            "Please enter email and password."
-        );
-
-        return;
-    }
-
-    try {
-
-        toast(
-            "Signing you in..."
-        );
-
-        const response =
-            await fetch(
-                `${API_BASE}/api/signin`,
-                {
-                    method:
-                        "POST",
-
-                    headers: {
-                        "Content-Type":
-                            "application/json"
-                    },
-
-                    body:
-                        JSON.stringify({
-                            email,
-                            password
-                        })
-                }
-            );
-
-        const data =
-            await response.json();
-
-        if (
-            !response.ok ||
-            !data.success
-        ) {
-
-            toast(
-                data.message ||
-                "Sign in failed."
-            );
-
-            return;
-        }
-
-        saveCurrentUser(
-            data.user
-        );
-
-        closeModal();
-
-        await loadUserInterests();
-
-        toast(
-            `Welcome back, ${
-                data.user.name
-            }!`
-        );
-
-        setTimeout(
-            () => {
-
-                openInterestPicker(
-                    true
-                );
-
-            },
-            350
-        );
-
-    } catch (
-        error
-    ) {
-
-        console.error(
-            "Sign in error:",
-            error
-        );
-
-        toast(
-            "Cannot connect to Gen Z Pulse server."
-        );
-    }
-}
-
-
-// =====================================================
-// LOAD USER INTERESTS
-// =====================================================
-
-async function loadUserInterests() {
-
-    if (
-        !currentUser ||
-        !currentUser.id
-    ) {
-
-        return;
-    }
-
-    try {
-
-        const response =
-            await fetch(
-                `${API_BASE}/api/interests/${encodeURIComponent(
-                    currentUser.id
-                )}`
-            );
-
-        const data =
-            await response.json();
-
-        if (
-            response.ok &&
-            data.success &&
-            Array.isArray(
-                data.interests
-            )
-        ) {
-
-            selectedInterests =
-                data.interests;
-
-            currentUser.interests =
-                data.interests;
-
-            localStorage.setItem(
-                CURRENT_USER_KEY,
-                JSON.stringify(
-                    currentUser
-                )
-            );
-
-            localStorage.setItem(
-                "genZPulseInterests",
-                JSON.stringify(
-                    selectedInterests
-                )
-            );
-
-            updateInterestSummary();
-
-            renderFlash();
-        }
-
-    } catch (
-        error
-    ) {
-
-        console.error(
-            "Load interests error:",
-            error
-        );
-    }
-}
-
-
-// =====================================================
-// LOGOUT
-// =====================================================
-
-function logoutUser() {
-
-    clearCurrentUser();
-
-    closeModal();
-
-    toast(
-        "Signed out successfully."
-    );
-}
-
-
-// =====================================================
-// INTEREST OPTIONS
-// =====================================================
-
-const INTERESTS = [
-
-    {
-        id:
-            "Technology",
-
-        label:
-            "Technology"
-    },
-
-    {
-        id:
-            "AI",
-
-        label:
-            "AI"
-    },
-
-    {
-        id:
-            "Education",
-
-        label:
-            "Education"
-    },
-
-    {
-        id:
-            "Career",
-
-        label:
-            "Career & Jobs"
-    },
-
-    {
-        id:
-            "Government",
-
-        label:
-            "Government"
-    },
-
-    {
-        id:
-            "Business",
-
-        label:
-            "Business"
-    },
-
-    {
-        id:
-            "Sports",
-
-        label:
-            "Sports"
-    },
-
-    {
-        id:
-            "Science",
-
-        label:
-            "Science"
-    },
-
-    {
-        id:
-            "Entertainment",
-
-        label:
-            "Entertainment"
-    },
-
-    {
-        id:
-            "Startups",
-
-        label:
-            "Startups"
-    }
-];
-
-
-// =====================================================
-// CREATE INTEREST MODAL
-// =====================================================
-
-function ensureInterestModal() {
-
-    if (
-        document.getElementById(
-            "interestModal"
-        )
-    ) {
-
-        return;
-    }
-
-    const buttons =
-        INTERESTS
-            .map(
-                interest => `
-
-                    <button
-                        type="button"
-                        class="filter interest-option"
-                        data-interest="${interest.id}"
-                        onclick="toggleInterest(this)"
-                    >
-                        ${interest.label}
-                    </button>
-                `
-            )
-            .join("");
-
-    document.body.insertAdjacentHTML(
-        "beforeend",
-        `
-
-        <div
-            class="modal"
-            id="interestModal"
-        >
-
-            <div
-                class="modalBox"
-            >
-
-                <button
-                    class="close"
-                    onclick="closeInterestPicker()"
-                >
-                    ✕
-                </button>
-
-                <span class="tag">
-                    PERSONALIZATION
-                </span>
-
-                <h2>
-                    Choose your interests
-                </h2>
-
-                <p>
-                    Tell Gen Z Pulse what
-                    you care about. Your
-                    choices will be saved
-                    to your account and
-                    used to prioritize
-                    relevant stories.
-                </p>
-
-                <div
-                    id="interestOptions"
-                    class="filters"
-                    style="
-                        margin-top:18px;
-                        margin-bottom:10px
-                    "
-                >
-                    ${buttons}
-                </div>
-
-                <button
-                    class="apply"
-                    onclick="saveInterests()"
-                >
-                    Save interests
-                </button>
-
-                <button
-                    class="action"
-                    onclick="closeInterestPicker()"
-                >
-                    Skip for now
-                </button>
-
-            </div>
-
-        </div>
-        `
-    );
-}
-
-
-// =====================================================
-// OPEN INTEREST PICKER
-// =====================================================
-
-function openInterestPicker(
-    afterAuth = false
-) {
-
-    ensureInterestModal();
-
-    if (
-        !currentUser
-    ) {
-
-        closeModal();
-
-        showAccount(
-            "signin"
-        );
-
-        return;
-    }
-
-    const savedSet =
-        new Set(
-            selectedInterests
-        );
-
-    document
-        .querySelectorAll(
-            ".interest-option"
-        )
-        .forEach(
-            button => {
-
-                button.classList.toggle(
-                    "active",
-                    savedSet.has(
-                        button.dataset
-                            .interest
-                    )
-                );
-            }
-        );
-
-    document
-        .getElementById(
-            "interestModal"
-        )
-        ?.classList.add(
-            "show"
-        );
-}
-
-
-// =====================================================
-// CLOSE INTEREST PICKER
-// =====================================================
-
-function closeInterestPicker() {
-
-    document
-        .getElementById(
-            "interestModal"
-        )
-        ?.classList.remove(
-            "show"
-        );
-
-    updateInterestSummary();
-
-    renderFlash();
-}
-
-
-// =====================================================
-// TOGGLE INTEREST
-// =====================================================
-
-function toggleInterest(
-    button
-) {
-
-    if (
-        !button
-    ) {
-
-        return;
-    }
-
-    button.classList.toggle(
-        "active"
-    );
-}
-
-
-// =====================================================
-// SAVE INTERESTS
-// =====================================================
-
-async function saveInterests() {
-
-    if (
-        !currentUser
-    ) {
-
-        toast(
-            "Please sign in first."
-        );
-
-        return;
-    }
-
-    const selected =
-        Array.from(
-            document.querySelectorAll(
-                ".interest-option.active"
-            )
-        )
-            .map(
-                button =>
-                    button.dataset
-                        .interest
-            )
-            .filter(
-                Boolean
-            );
-
-    try {
-
-        toast(
-            "Saving your interests..."
-        );
-
-        const response =
-            await fetch(
-                `${API_BASE}/api/interests`,
-                {
-                    method:
-                        "POST",
-
-                    headers: {
-                        "Content-Type":
-                            "application/json"
-                    },
-
-                    body:
-                        JSON.stringify({
-                            userId:
-                                currentUser.id,
-
-                            interests:
-                                selected
-                        })
-                }
-            );
-
-        const data =
-            await response.json();
-
-        if (
-            !response.ok ||
-            !data.success
-        ) {
-
-            throw new Error(
-                data.message ||
-                "Unable to save interests."
-            );
-        }
-
-        selectedInterests =
-            Array.isArray(
-                data.interests
-            )
-                ? data.interests
-                : selected;
-
-        currentUser.interests =
-            selectedInterests;
-
-        localStorage.setItem(
-            CURRENT_USER_KEY,
-            JSON.stringify(
-                currentUser
-            )
-        );
-
-        localStorage.setItem(
-            "genZPulseInterests",
-            JSON.stringify(
-                selectedInterests
-            )
-        );
-
-        updateInterestSummary();
-
-        renderFlash();
-
-        closeInterestPicker();
-
-        toast(
-            selectedInterests.length
-                ? "Your interests are saved."
-                : "Interests cleared."
-        );
-
-    } catch (
-        error
-    ) {
-
-        console.error(
-            "Save interests error:",
-            error
-        );
-
-        toast(
-            "Could not save interests. Please try again."
-        );
-    }
-}
-
-
-// =====================================================
-// UPDATE INTEREST SUMMARY
-// =====================================================
-
-function updateInterestSummary() {
-
-    let summary =
-        document.getElementById(
-            "interestSummary"
-        );
-
-    if (
-        !summary
-    ) {
-
-        return;
-    }
-
-    if (
-        selectedInterests.length
-    ) {
-
-        summary.innerHTML = `
-
-            <span class="tag">
-                YOUR INTERESTS
-            </span>
-
-            <h3>
-                ${selectedInterests
-                    .map(
-                        interest =>
-                            escapeHtml(
-                                interest
-                            )
-                    )
-                    .join(
-                        " · "
-                    )}
-            </h3>
-
-            <p>
-                Your Gen Z Pulse feed
-                will prioritize stories
-                related to these topics.
-            </p>
-        `;
-
-    } else {
-
-        summary.innerHTML = `
-
-            <span class="tag">
-                PERSONALIZATION
-            </span>
-
-            <h3>
-                Make your Pulse more relevant
-            </h3>
-
-            <p>
-                Choose the topics you care
-                about and Gen Z Pulse will
-                prioritize related stories.
-            </p>
-        `;
-    }
-}
-
-
-// =====================================================
-// CREATE RADAR & RELEVANCE SECTION
-// =====================================================
-
-function ensureRadarSection() {
-
-    if (
-        document.getElementById(
-            "radar"
-        )
-    ) {
-
-        updateInterestSummary();
-
-        return;
-    }
-
-    const flash =
-        document.getElementById(
-            "flash"
-        );
-
-    if (
-        !flash
-    ) {
-
-        return;
-    }
-
-    const section =
-        document.createElement(
-            "section"
-        );
-
-    section.className =
-        "section";
-
-    section.id =
-        "radar";
-
-    section.innerHTML = `
-
-        <div
-            class="sectionHead"
-        >
-
-            <div>
-
-                <h2>
-                    Radar & Relevance
-                </h2>
-
-                <p>
-                    Personalize your
-                    Gen Z Pulse feed.
-                </p>
-
-            </div>
-
-        </div>
-
-        <div
-            class="card"
-        >
-
-            <div
-                id="interestSummary"
-            ></div>
-
-            <button
-                class="action"
-                style="
-                    width:auto;
-                    padding:12px 18px
-                "
-                onclick="openInterestPicker()"
-            >
-                Choose interests
-            </button>
-
-        </div>
-    `;
-
-    flash.insertAdjacentElement(
-        "afterend",
-        section
-    );
-
-    updateInterestSummary();
-
-    addRadarNavigation();
-}
-
-
-// =====================================================
-// ADD RADAR TO NAVIGATION
-// =====================================================
-
-function addRadarNavigation() {
-
-    const nav =
-        document.querySelector(
-            ".navlinks"
-        );
-
-    if (
-        !nav ||
-        nav.querySelector(
-            '[data-target="radar"]'
-        )
-    ) {
-
-        return;
-    }
-
-    const button =
-        document.createElement(
-            "button"
-        );
-
-    button.dataset.target =
-        "radar";
-
-    button.textContent =
-        "Radar & Relevance";
-
-    button.onclick =
-        () =>
-            scrollToId(
-                "radar"
-            );
-
-    nav.appendChild(
-        button
-    );
-}
-
-
-// =====================================================
-// RAZORPAY PLUS CHECKOUT
-// =====================================================
-
-async function startPlusCheckout() {
-
-    if (
-        !currentUser
-    ) {
-
-        toast(
-            "Please sign in before subscribing."
-        );
-
-        showAccount(
-            "signin"
-        );
-
-        return;
-    }
-
-    if (
-        currentUser.subscription ===
-        "plus"
-    ) {
-
-        toast(
-            "You are already a Plus member."
-        );
-
-        return;
-    }
-
-    if (
-        typeof Razorpay ===
-        "undefined"
-    ) {
-
-        toast(
-            "Razorpay Checkout did not load."
-        );
-
-        return;
-    }
-
-    try {
-
-        toast(
-            "Creating secure payment..."
-        );
-
-        const response =
-            await fetch(
-                `${API_BASE}/api/create-plus-order`,
-                {
-                    method:
-                        "POST",
-
-                    headers: {
-                        "Content-Type":
-                            "application/json"
-                    },
-
-                    body:
-                        JSON.stringify({
-                            userId:
-                                currentUser.id
-                        })
-                }
-            );
-
-        const data =
-            await response.json();
-
-        if (
-            !response.ok ||
-            !data.success
-        ) {
-
-            toast(
-                data.message ||
-                "Could not create payment order."
-            );
-
-            return;
-        }
-
-        const options = {
-
-            key:
-                data.razorpayKeyId,
-
-            amount:
-                data.amount,
-
-            currency:
-                data.currency,
-
-            name:
-                "Gen Z Pulse",
-
-            description:
-                "Gen Z Pulse Plus",
-
-            order_id:
-                data.orderId,
-
-            prefill: {
-
-                name:
-                    currentUser.name,
-
-                email:
-                    currentUser.email
-            },
-
-            theme: {
-
-                color:
-                    "#6957ff"
-            },
-
-            handler:
-                async function (
-                    paymentResponse
-                ) {
-
-                    await verifyPlusPayment(
-                        paymentResponse
-                    );
-                },
-
-            modal: {
-
-                ondismiss:
-                    function () {
-
-                        toast(
-                            "Payment window closed."
-                        );
-                    }
-            }
-        };
-
-        const razorpay =
-            new Razorpay(
-                options
-            );
-
-        razorpay.on(
-            "payment.failed",
-            function () {
-
-                toast(
-                    "Payment failed. Please try again."
-                );
-            }
-        );
-
-        razorpay.open();
-
-    } catch (
-        error
-    ) {
-
-        console.error(
-            "Razorpay error:",
-            error
-        );
-
-        toast(
-            "Unable to start payment."
-        );
-    }
-}
-
-
-// =====================================================
-// VERIFY PAYMENT
-// =====================================================
-
-async function verifyPlusPayment(
-    paymentResponse
-) {
-
-    try {
-
-        toast(
-            "Verifying payment..."
-        );
-
-        const response =
-            await fetch(
-                `${API_BASE}/api/verify-plus-payment`,
-                {
-                    method:
-                        "POST",
-
-                    headers: {
-                        "Content-Type":
-                            "application/json"
-                    },
-
-                    body:
-                        JSON.stringify({
-
-                            userId:
-                                currentUser.id,
-
-                            razorpay_order_id:
-                                paymentResponse
-                                    .razorpay_order_id,
-
-                            razorpay_payment_id:
-                                paymentResponse
-                                    .razorpay_payment_id,
-
-                            razorpay_signature:
-                                paymentResponse
-                                    .razorpay_signature
-                        })
-                }
-            );
-
-        const data =
-            await response.json();
-
-        if (
-            !response.ok ||
-            !data.success
-        ) {
-
-            toast(
-                data.message ||
-                "Payment verification failed."
-            );
-
-            return;
-        }
-
-        saveCurrentUser(
-            data.user
-        );
-
-        closeModal();
-
-        toast(
-            "🎉 Gen Z Pulse Plus activated!"
-        );
-
-    } catch (
-        error
-    ) {
-
-        console.error(
-            "Payment verification error:",
-            error
-        );
-
-        toast(
-            "Payment verification failed."
-        );
-    }
-}
-
-
-// =====================================================
-// SAVED STORIES
-// =====================================================
-
-function saveItem(
-    index
-) {
-
-    if (
-        !currentUser
-    ) {
-
-        toast(
-            "Sign in to save stories."
-        );
-
-        showAccount(
-            "signin"
-        );
-
-        return;
-    }
-
-    if (
-        !saved.includes(
-            index
-        )
-    ) {
-
-        saved.push(
-            index
-        );
-
-        updateSaved();
-
-        toast(
-            "Saved to your Pulse."
-        );
-
-    } else {
-
-        toast(
-            "Already saved."
-        );
-    }
-
-    syncSavedStory(
-        index
-    );
-}
-
-
-// =====================================================
-// SAVE STORY TO SUPABASE
-// =====================================================
-
-async function syncSavedStory(
-    index
-) {
-
-    if (
-        !currentUser ||
-        !currentUser.id
-    ) {
-
-        return;
-    }
-
-    const item =
-        items[index];
-
-    if (
-        !item
-    ) {
-
-        return;
-    }
-
-    try {
-
-        await fetch(
-            `${API_BASE}/api/save-story`,
-            {
-                method:
-                    "POST",
-
-                headers: {
-                    "Content-Type":
-                        "application/json"
-                },
-
-                body:
-                    JSON.stringify({
-
-                        userId:
-                            currentUser.id,
-
-                        story:
-                            item
-                    })
-            }
-        );
-
-    } catch (
-        error
-    ) {
-
-        console.error(
-            "Saved story sync error:",
-            error
-        );
-    }
-}
-
-
-// =====================================================
-// UPDATE SAVED
-// =====================================================
-
-function updateSaved() {
-
-    const list =
-        document.getElementById(
-            "savedList"
-        );
-
-    const text =
-        document.getElementById(
-            "savedText"
-        );
-
-    if (
-        !list ||
-        !text
-    ) {
-
-        return;
-    }
-
-    text.textContent =
-        saved.length
-            ? `${saved.length} item${
-                saved.length >
-                1
-                    ? "s"
-                    : ""
-            } saved to your personal Pulse.`
-            : "Nothing saved yet. Use the Save button on a story to build your personal pulse.";
-
-    list.innerHTML =
-        saved
-            .map(
-                index => {
-
-                    const item =
-                        items[index];
-
-                    if (
-                        !item
-                    ) {
-
-                        return "";
-                    }
-
-                    return `
-
-                        <div
-                            class="card"
-                            style="
-                                margin-top:10px
-                            "
-                        >
-
-                            <span class="tag">
-
-                                ${escapeHtml(
-                                    item.tag
-                                )}
-
-                                ·
-
-                                ${escapeHtml(
-                                    item.cat
-                                )}
-
-                            </span>
-
-                            <h3>
-                                ${escapeHtml(
-                                    item.title
-                                )}
-                            </h3>
-
-                            <p>
-                                ${escapeHtml(
-                                    item.text
-                                )}
-                            </p>
-
-                            <button
-                                class="action"
-                                onclick="showNews(${index})"
-                            >
-                                Open story
-                            </button>
-
-                        </div>
-                    `;
-                }
-            )
-            .join("");
-}
-
-
-// =====================================================
-// STATIC MODALS
-// =====================================================
-
-function showModal(
-    type,
-    data
-) {
-
-    const content =
-        document.getElementById(
-            "modalContent"
-        );
-
-    const modal =
-        document.getElementById(
-            "modal"
-        );
-
-    if (
-        !content ||
-        !modal
-    ) {
-
-        return;
-    }
-
-    const html = {
-
-        profile: `
-
-            <span class="tag">
-                Account
-            </span>
-
-            <h2>
-                ${
-                    currentUser
-                        ? `Welcome, ${
-                            escapeHtml(
-                                currentUser.name
-                            )
-                        }`
-                        : "Your Pulse"
-                }
-            </h2>
-
-            ${
-                currentUser
-                    ? `
-
-                        <p>
-                            <strong>
-                                Email:
-                            </strong>
-
-                            ${escapeHtml(
-                                currentUser.email
-                            )}
-                        </p>
-
-                        <p>
-                            <strong>
-                                Interests:
-                            </strong>
-
-                            ${
-                                currentUser
-                                    .interests
-                                    ?.length
-                                    ? escapeHtml(
-                                        currentUser
-                                            .interests
-                                            .join(
-                                                ", "
-                                            )
-                                    )
-                                    : "Not selected yet"
-                            }
-                        </p>
-
-                        <p>
-                            <strong>
-                                Plan:
-                            </strong>
-
-                            ${
-                                currentUser.subscription ===
-                                "plus"
-                                    ? "Gen Z Pulse Plus"
-                                    : "Free"
-                            }
-                        </p>
-
-                        <button
-                            class="action"
-                            onclick="
-                                closeModal();
-                                openInterestPicker()
-                            "
-                        >
-                            Edit interests
-                        </button>
-
-                        ${
-                            currentUser.subscription ===
-                            "plus"
-                                ? `
-
-                                    <div
-                                        class="card"
-                                        style="
-                                            border-color:
-                                            var(--accent)
-                                        "
-                                    >
-
-                                        <span class="tag">
-                                            PLUS MEMBER
-                                        </span>
-
-                                        <h3>
-                                            Gen Z Pulse Plus
-                                        </h3>
-
-                                        <p>
-                                            Your Plus
-                                            subscription
-                                            is active.
-                                        </p>
-
-                                    </div>
-
-                                `
-                                : `
-
-                                    <button
-                                        class="apply"
-                                        onclick="
-                                            closeModal();
-                                            showAccount('subscribe')
-                                        "
-                                    >
-                                        Upgrade to Plus →
-                                    </button>
-                                `
-                        }
-
-                        <button
-                            class="action"
-                            onclick="logoutUser()"
-                        >
-                            Sign out
-                        </button>
-
-                    `
-                    : `
-
-                        <p>
-                            Sign in to manage
-                            your Gen Z Pulse account.
-                        </p>
-
-                        <button
-                            class="action"
-                            onclick="showAccount('signin')"
-                        >
-                            Sign in
-                        </button>
-
-                    `
-            }
-
-        `,
-
-
-        how: `
-
-            <span class="tag">
-                The idea
-            </span>
-
-            <h2>
-                Less information overload.
-                More understanding.
-            </h2>
-
-            <p>
-
-                <b>1.</b>
-                Find important information.
-                <br>
-
-                <b>2.</b>
-                Summarize it into a quick flash.
-                <br>
-
-                <b>3.</b>
-                Explain context and relevance.
-                <br>
-
-                <b>4.</b>
-                Connect users to an action
-                when one exists.
-
-            </p>
-
-        `,
-
-
-        explain: `
-
-            <span class="tag">
-                Gen Z Explain
-            </span>
-
-            <h2>
-                Context before conclusions
-            </h2>
-
-            <p>
-                Gen Z Explain helps users
-                understand what happened,
-                why it matters and what
-                they should know next.
-            </p>
-
-        `,
-
-
-        trust: `
-
-            <span class="tag">
-                Trust checklist
-            </span>
-
-            <h2>
-                Before you believe or share
-            </h2>
-
-            <p>
-
-                ✓ Find the original source
-                <br>
-
-                ✓ Check the date
-                <br>
-
-                ✓ Separate facts from opinions
-                <br>
-
-                ✓ Look for evidence
-                <br>
-
-                ✓ Compare credible sources
-
-            </p>
-
-        `,
-
-
-        workflow: `
-
-            <span class="tag">
-                Operations
-            </span>
-
-            <h2>
-                Content workflow
-            </h2>
-
-            <p>
-                Find News →
-                AI Summarization →
-                Human Verification →
-                Relevance Check →
-                Personalization →
-                Publish →
-                Notify →
-                User Action →
-                Feedback
-            </p>
-
-        `
-    };
-
-    content.innerHTML =
-        html[type] ||
-        `
-
-            <span class="tag">
-                Gen Z Flash
-            </span>
-
-            <h2>
-                ${escapeHtml(
-                    data?.title ||
-                    "Gen Z Pulse"
-                )}
-            </h2>
-
-            <p>
-                ${escapeHtml(
-                    data?.text ||
-                    ""
-                )}
-            </p>
-
-            <button
-                class="action"
-                onclick="closeModal()"
-            >
-                Back to pulse
-            </button>
-
-        `;
-
-    modal.classList.add(
-        "show"
-    );
-}
-
-
-// =====================================================
-// CLOSE MODAL
-// =====================================================
-
-function closeModal() {
-
-    document
-        .getElementById(
-            "modal"
-        )
-        ?.classList.remove(
-            "show"
-        );
-}
-
-
-// =====================================================
-// TOAST
-// =====================================================
-
-function toast(
-    message
-) {
-
-    const element =
-        document.getElementById(
-            "toast"
-        );
-
-    if (
-        !element
-    ) {
-
-        return;
-    }
-
-    element.textContent =
-        message;
-
-    element.classList.add(
-        "show"
-    );
-
-    setTimeout(
-        () => {
-
-            element.classList.remove(
-                "show"
-            );
-
-        },
-        2400
-    );
-}
-
-
-// =====================================================
-// SCROLL
-// =====================================================
-
-function scrollToId(
-    id
-) {
-
-    const element =
-        document.getElementById(
-            id
-        );
-
-    if (
-        element
-    ) {
-
-        element.scrollIntoView({
-
-            behavior:
-                "smooth",
-
-            block:
-                "start"
-        });
-    }
-}
-
-
-// =====================================================
-// SEARCH ENTER KEY
-// =====================================================
-
-function setupSearch() {
-
-    const search =
-        document.getElementById(
-            "search"
-        );
-
-    if (
-        !search ||
-        search.dataset
-            .genZSearchReady ===
-            "true"
-    ) {
-
-        return;
-    }
-
-    search.dataset
-        .genZSearchReady =
-        "true";
-
-    search.addEventListener(
-        "keydown",
-        event => {
+app.post(
+    "/api/signin",
+    async (req, res) => {
+
+        try {
+
+            const {
+                email,
+                password
+            } = req.body;
 
             if (
-                event.key ===
-                "Enter"
+                !email ||
+                !password
             ) {
 
-                event.preventDefault();
+                return res.status(400).json({
 
-                searchToday();
+                    success:
+                        false,
+
+                    message:
+                        "Email and password are required."
+                });
             }
-        }
-    );
-}
 
+            const cleanEmail =
+                String(email)
+                    .trim()
+                    .toLowerCase();
 
-// =====================================================
-// REBUILD SEARCH BOX BUTTON
-// =====================================================
+            const user =
+                await getUserByEmail(
+                    cleanEmail
+                );
 
-function ensureSearchButton() {
+            if (!user) {
 
-    const search =
-        document.getElementById(
-            "search"
-        );
+                return res.status(401).json({
 
-    if (
-        !search
-    ) {
+                    success:
+                        false,
 
-        return;
-    }
+                    message:
+                        "Invalid email or password."
+                });
+            }
 
-    const parent =
-        search.parentElement;
+            const passwordMatch =
+                await bcrypt.compare(
+                    password,
+                    user.password
+                );
 
-    if (
-        !parent
-    ) {
+            if (!passwordMatch) {
 
-        return;
-    }
+                return res.status(401).json({
 
-    if (
-        parent.querySelector(
-            ".today-search-button"
-        )
-    ) {
+                    success:
+                        false,
 
-        return;
-    }
+                    message:
+                        "Invalid email or password."
+                });
+            }
 
-    const button =
-        document.createElement(
-            "button"
-        );
+            res.json({
 
-    button.type =
-        "button";
+                success:
+                    true,
 
-    button.className =
-        "action today-search-button";
+                message:
+                    "Sign in successful.",
 
-    button.textContent =
-        "Search";
+                user: {
 
-    button.style.width =
-        "auto";
+                    id:
+                        user.id,
 
-    button.style.marginTop =
-        "0";
+                    name:
+                        user.name,
 
-    button.style.padding =
-        "12px 16px";
+                    email:
+                        user.email,
 
-    button.onclick =
-        searchToday;
-
-    parent.appendChild(
-        button
-    );
-}
-
-
-// =====================================================
-// UPDATE EXISTING VISIBLE NAMES
-// =====================================================
-
-function updateVisibleNames() {
-
-    const replacements = [
-        [
-            "Gen G Pulse",
-            "Gen Z Pulse"
-        ],
-        [
-            "Gen G Flash",
-            "Gen Z Flash"
-        ],
-        [
-            "Gen G Explain",
-            "Gen Z Explain"
-        ],
-        [
-            "Gen G Opportunity",
-            "Gen Z Opportunity"
-        ]
-    ];
-
-    const walker =
-        document.createTreeWalker(
-            document.body,
-            NodeFilter.SHOW_TEXT
-        );
-
-    const textNodes =
-        [];
-
-    let node;
-
-    while (
-        node =
-            walker.nextNode()
-    ) {
-
-        textNodes.push(
-            node
-        );
-    }
-
-    textNodes.forEach(
-        textNode => {
-
-            let value =
-                textNode.nodeValue;
-
-            replacements.forEach(
-                pair => {
-
-                    value =
-                        value.replace(
-                            pair[0],
-                            pair[1]
-                        );
+                    subscription:
+                        user.subscription ||
+                        "free"
                 }
+            });
+
+        } catch (error) {
+
+            console.error(
+                "Signin error:",
+                error
             );
 
-            textNode.nodeValue =
-                value;
-        }
-    );
-}
+            res.status(500).json({
 
+                success:
+                    false,
 
-// =====================================================
-// NAVIGATION
-// =====================================================
+                message:
+                    "Unable to sign in.",
 
-function setupNavigation() {
-
-    document
-        .querySelectorAll(
-            ".navlinks button"
-        )
-        .forEach(
-            button => {
-
-                button.onclick =
-                    () =>
-                        scrollToId(
-                            button.dataset
-                                .target
-                        );
-            }
-        );
-}
-
-
-// =====================================================
-// MODAL OUTSIDE CLICK
-// =====================================================
-
-function setupModalClose() {
-
-    const modal =
-        document.getElementById(
-            "modal"
-        );
-
-    if (
-        modal &&
-        !modal.dataset
-            .closeReady
-    ) {
-
-        modal.dataset
-            .closeReady =
-            "true";
-
-        modal.addEventListener(
-            "click",
-            event => {
-
-                if (
-                    event.target ===
-                    modal
-                ) {
-
-                    closeModal();
-                }
-            }
-        );
-    }
-}
-
-
-// =====================================================
-// RAZORPAY SCRIPT
-// =====================================================
-
-function ensureRazorpayScript() {
-
-    if (
-        document.querySelector(
-            'script[src*="checkout.razorpay.com"]'
-        )
-    ) {
-
-        return;
-    }
-
-    const script =
-        document.createElement(
-            "script"
-        );
-
-    script.src =
-        "https://checkout.razorpay.com/v1/checkout.js";
-
-    script.async =
-        true;
-
-    document.head.appendChild(
-        script
-    );
-}
-
-
-// =====================================================
-// START APPLICATION
-// =====================================================
-
-document.addEventListener(
-    "DOMContentLoaded",
-    async () => {
-
-        updateVisibleNames();
-
-        ensureInterestModal();
-
-        ensureRadarSection();
-
-        ensureSearchButton();
-
-        setupSearch();
-
-        setupNavigation();
-
-        setupModalClose();
-
-        ensureRazorpayScript();
-
-        updateAccountUI();
-
-        updateInterestSummary();
-
-        await loadNews(
-            "India technology"
-        );
-
-        if (
-            currentUser
-        ) {
-
-            await loadUserInterests();
+                error:
+                    error.message
+            });
         }
     }
 );
 
+// =====================================================
+// SAVE STORY
+// =====================================================
+
+app.post(
+    "/api/save-story",
+    async (req, res) => {
+
+        try {
+
+            const {
+                userId,
+                story
+            } = req.body;
+
+            if (
+                !userId ||
+                !story
+            ) {
+
+                return res.status(400).json({
+
+                    success:
+                        false,
+
+                    message:
+                        "User ID and story are required."
+                });
+            }
+
+            const user =
+                await getUserById(
+                    userId
+                );
+
+            if (!user) {
+
+                return res.status(404).json({
+
+                    success:
+                        false,
+
+                    message:
+                        "User not found."
+                });
+            }
+
+            if (
+                !Array.isArray(
+                    user.savedStories
+                )
+            ) {
+
+                user.savedStories = [];
+            }
+
+            const alreadySaved =
+                user.savedStories.some(
+                    item =>
+                        item.url ===
+                        story.url
+                );
+
+            if (!alreadySaved) {
+
+                user.savedStories.push(
+                    story
+                );
+            }
+
+            const updatedUser =
+                await updateUser(
+                    user
+                );
+
+            res.json({
+
+                success:
+                    true,
+
+                message:
+                    alreadySaved
+                        ? "Story already saved."
+                        : "Story saved successfully.",
+
+                savedStories:
+                    updatedUser.savedStories
+            });
+
+        } catch (error) {
+
+            console.error(
+                "Save story error:",
+                error
+            );
+
+            res.status(500).json({
+
+                success:
+                    false,
+
+                message:
+                    "Unable to save story.",
+
+                error:
+                    error.message
+            });
+        }
+    }
+);
 
 // =====================================================
-// EXPOSE FUNCTIONS FOR HTML onclick
+// GET SAVED STORIES
 // =====================================================
 
-window.loadNews =
-    loadNews;
+app.get(
+    "/api/saved/:userId",
+    async (req, res) => {
 
-window.searchToday =
-    searchToday;
+        try {
 
-window.setFilter =
-    setFilter;
+            const userId =
+                req.params.userId;
 
-window.showNews =
-    showNews;
+            const user =
+                await getUserById(
+                    userId
+                );
 
-window.openFullArticle =
-    openFullArticle;
+            if (!user) {
 
-window.generateAISummary =
-    generateAISummary;
+                return res.status(404).json({
 
-window.generateAIExplain =
-    generateAIExplain;
+                    success:
+                        false,
 
-window.showAccount =
-    showAccount;
+                    message:
+                        "User not found."
+                });
+            }
 
-window.signUpUser =
-    signUpUser;
+            res.json({
 
-window.signInUser =
-    signInUser;
+                success:
+                    true,
 
-window.logoutUser =
-    logoutUser;
+                savedStories:
+                    user.savedStories ||
+                    []
+            });
 
-window.startPlusCheckout =
-    startPlusCheckout;
+        } catch (error) {
 
-window.verifyPlusPayment =
-    verifyPlusPayment;
+            console.error(
+                "Get saved stories error:",
+                error
+            );
 
-window.saveItem =
-    saveItem;
+            res.status(500).json({
 
-window.showModal =
-    showModal;
+                success:
+                    false,
 
-window.closeModal =
-    closeModal;
+                message:
+                    "Unable to load saved stories.",
 
-window.toast =
-    toast;
+                error:
+                    error.message
+            });
+        }
+    }
+);
 
-window.scrollToId =
-    scrollToId;
+// =====================================================
+// RAZORPAY - CREATE PLUS ORDER
+// =====================================================
 
-window.openInterestPicker =
-    openInterestPicker;
+app.post(
+    "/api/create-plus-order",
+    async (req, res) => {
 
-window.closeInterestPicker =
-    closeInterestPicker;
+        try {
 
-window.toggleInterest =
-    toggleInterest;
+            if (!razorpay) {
 
-window.saveInterests =
-    saveInterests;
+                return res.status(500).json({
 
-window.loadUserInterests =
-    loadUserInterests;
+                    success:
+                        false,
+
+                    message:
+                        "Razorpay is not configured on the server."
+                });
+            }
+
+            const {
+                userId
+            } = req.body;
+
+            if (!userId) {
+
+                return res.status(400).json({
+
+                    success:
+                        false,
+
+                    message:
+                        "User ID is required."
+                });
+            }
+
+            const user =
+                await getUserById(
+                    userId
+                );
+
+            if (!user) {
+
+                return res.status(404).json({
+
+                    success:
+                        false,
+
+                    message:
+                        "User not found."
+                });
+            }
+
+            // =================================================
+            // ₹99 ONE-TIME PAYMENT
+            // =================================================
+
+            const options = {
+
+                amount:
+                    9900,
+
+                currency:
+                    "INR",
+
+                receipt:
+                    `gen-z-${Date.now()}`,
+
+                notes: {
+
+                    product:
+                        "Gen Z Pulse Plus",
+
+                    userId:
+                        userId,
+
+                    plan:
+                        "plus"
+                }
+            };
+
+            const order =
+                await razorpay.orders.create(
+                    options
+                );
+
+            res.json({
+
+                success:
+                    true,
+
+                order: {
+
+                    id:
+                        order.id,
+
+                    amount:
+                        order.amount,
+
+                    currency:
+                        order.currency
+                },
+
+                // These top-level values
+                // match the frontend.
+                orderId:
+                    order.id,
+
+                amount:
+                    order.amount,
+
+                currency:
+                    order.currency,
+
+                razorpayKeyId:
+                    RAZORPAY_KEY_ID,
+
+                plan:
+                    "plus"
+            });
+
+        } catch (error) {
+
+            console.error(
+                "Razorpay order creation failed:",
+                error
+            );
+
+            res.status(500).json({
+
+                success:
+                    false,
+
+                message:
+                    "Unable to create Razorpay order.",
+
+                error:
+                    error.error?.description ||
+                    error.message
+            });
+        }
+    }
+);
+
+// =====================================================
+// RAZORPAY - VERIFY PAYMENT
+// =====================================================
+
+app.post(
+    "/api/verify-plus-payment",
+    async (req, res) => {
+
+        try {
+
+            const {
+                userId,
+                razorpay_order_id,
+                razorpay_payment_id,
+                razorpay_signature
+            } = req.body;
+
+            if (
+                !userId ||
+                !razorpay_order_id ||
+                !razorpay_payment_id ||
+                !razorpay_signature
+            ) {
+
+                return res.status(400).json({
+
+                    success:
+                        false,
+
+                    message:
+                        "Payment verification details are incomplete."
+                });
+            }
+
+            if (
+                !RAZORPAY_KEY_SECRET
+            ) {
+
+                return res.status(500).json({
+
+                    success:
+                        false,
+
+                    message:
+                        "Razorpay secret key is not configured."
+                });
+            }
+
+            const generatedSignature =
+                crypto
+                    .createHmac(
+                        "sha256",
+                        RAZORPAY_KEY_SECRET
+                    )
+                    .update(
+                        razorpay_order_id +
+                        "|" +
+                        razorpay_payment_id
+                    )
+                    .digest("hex");
+
+            const signatureMatches =
+                generatedSignature ===
+                razorpay_signature;
+
+            if (!signatureMatches) {
+
+                return res.status(400).json({
+
+                    success:
+                        false,
+
+                    message:
+                        "Payment verification failed."
+                });
+            }
+
+            const user =
+                await getUserById(
+                    userId
+                );
+
+            if (!user) {
+
+                return res.status(404).json({
+
+                    success:
+                        false,
+
+                    message:
+                        "User not found."
+                });
+            }
+
+            user.subscription =
+                "plus";
+
+            user.subscriptionDetails = {
+
+                plan:
+                    "Gen Z Pulse Plus",
+
+                amount:
+                    99,
+
+                currency:
+                    "INR",
+
+                paymentId:
+                    razorpay_payment_id,
+
+                orderId:
+                    razorpay_order_id,
+
+                activatedAt:
+                    new Date().toISOString()
+            };
+
+            const updatedUser =
+                await updateUser(
+                    user
+                );
+
+            res.json({
+
+                success:
+                    true,
+
+                message:
+                    "Gen Z Pulse Plus activated successfully.",
+
+                subscription:
+                    "plus",
+
+                user: {
+
+                    id:
+                        updatedUser.id,
+
+                    name:
+                        updatedUser.name,
+
+                    email:
+                        updatedUser.email,
+
+                    subscription:
+                        updatedUser.subscription
+                }
+            });
+
+        } catch (error) {
+
+            console.error(
+                "Razorpay verification failed:",
+                error
+            );
+
+            res.status(500).json({
+
+                success:
+                    false,
+
+                message:
+                    "Unable to verify payment.",
+
+                error:
+                    error.message
+            });
+        }
+    }
+);
+
+// =====================================================
+// START SERVER
+// =====================================================
+
+async function startServer() {
+
+    try {
+
+        await initializeSupabase();
+
+        app.listen(
+            PORT,
+            () => {
+
+                console.log(
+                    `Gen Z Pulse backend running at http://localhost:${PORT}`
+                );
+
+                console.log(
+                    `Gemini model: ${GEMINI_MODEL}`
+                );
+
+                console.log(
+                    supabase
+                        ? "Supabase: connected"
+                        : "Supabase: NOT connected"
+                );
+
+                console.log(
+                    RAZORPAY_KEY_ID
+                        ? "Razorpay: configured"
+                        : "Razorpay: NOT configured"
+                );
+            }
+        );
+
+    } catch (error) {
+
+        console.error(
+            "Server startup failed:"
+        );
+
+        console.error(
+            error.message
+        );
+
+        process.exit(1);
+    }
+}
+
+startServer();
