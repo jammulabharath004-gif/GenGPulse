@@ -572,7 +572,7 @@ function showNews(index) {
                 class="action"
                 onclick="generateAIExplain(${index})"
             >
-                🤖 Gen G Explain
+                🤖 Gen Z Explain
             </button>
 
             <button
@@ -754,7 +754,7 @@ async function generateAISummary(index) {
 
 
 /* =====================================================
-   GEN G EXPLAIN
+   GEN Z EXPLAIN
    ===================================================== */
 
 async function generateAIExplain(index) {
@@ -778,7 +778,7 @@ async function generateAIExplain(index) {
         <div class="ai-summary-block">
 
             <h3>
-                🤖 Gen G Explain
+                🤖 Gen Z Explain
             </h3>
 
             <p>
@@ -837,13 +837,13 @@ async function generateAIExplain(index) {
                 data.analysis ||
                 data.aiResponse ||
                 "",
-                "🤖 Gen G Explain"
+                "🤖 Gen Z Explain"
             );
 
     } catch (error) {
 
         console.error(
-            "Gen G Explain error:",
+            "Gen Z Explain error:",
             error
         );
 
@@ -851,7 +851,7 @@ async function generateAIExplain(index) {
             <div class="ai-summary-block">
 
                 <h3>
-                    🤖 Gen G Explain
+                    🤖 Gen Z Explain
                 </h3>
 
                 <p>
@@ -864,7 +864,7 @@ async function generateAIExplain(index) {
                     class="action"
                     onclick="generateAIExplain(${index})"
                 >
-                    Try Gen G Explain Again
+                    Try Gen Z Explain Again
                 </button>
 
             </div>
@@ -1372,7 +1372,7 @@ function showAccount(type) {
                     </h3>
 
                     <p>
-                        Core news, Gen G Flash,
+                        Core news, Gen Z Flash,
                         basic explanations and
                         saved stories.
                     </p>
@@ -2287,7 +2287,7 @@ function showModal(type, data) {
         explain: `
 
             <span class="tag">
-                Gen G Explain
+                Gen Z Explain
             </span>
 
             <h2>
@@ -2369,7 +2369,7 @@ function showModal(type, data) {
         html[type] ||
         `
             <span class="tag">
-                Gen G Flash
+                Gen Z Flash
             </span>
 
             <h2>
@@ -2527,3 +2527,4 @@ document.addEventListener(
         );
     }
 );
+
