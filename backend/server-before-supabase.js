@@ -1,4 +1,4 @@
-﻿const express = require("express");
+const express = require("express");
 const cors = require("cors");
 const axios = require("axios");
 const fs = require("fs");
@@ -6,7 +6,6 @@ const path = require("path");
 const crypto = require("crypto");
 const bcrypt = require("bcryptjs");
 const Razorpay = require("razorpay");
-const { createClient } = require("@supabase/supabase-js");
 
 require("dotenv").config();
 
@@ -24,19 +23,6 @@ const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
 const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID;
 const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET;
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_SECRET_KEY = process.env.SUPABASE_SECRET_KEY;
-
-const supabase = createClient(
-    SUPABASE_URL,
-    SUPABASE_SECRET_KEY,
-    {
-        auth: {
-            autoRefreshToken: false,
-            persistSession: false
-        }
-    }
-);
 
 // IMPORTANT:
 // This model was tested directly and is working.
@@ -396,83 +382,108 @@ Use only information supported by the provided article.
 // SIGN UP
 // =====================================================
 
-// =====================================================
-// SIGN UP
-// =====================================================
-
 app.post(
     "/api/signup",
     async (req, res) => {
         try {
-            const { name, email, password } = req.body;
+            const {
+                name,
+                email,
+                password
+            } = req.body;
 
-            if (!name || !email || !password) {
+            if (
+                !name ||
+                !email ||
+                !password
+            ) {
                 return res.status(400).json({
                     success: false,
-                    message: "Name, email and password are required."
+                    message:
+                        "Name, email and password are required."
                 });
             }
 
-            const normalizedEmail = email.trim().toLowerCase();
+            const users =
+                readUsers();
 
-            const { data: existingUser, error: checkError } = await supabase
-                .from("users")
-                .select("id")
-                .eq("email", normalizedEmail)
-                .maybeSingle();
-
-            if (checkError) {
-                console.error("Signup database check error:", checkError);
-                return res.status(500).json({
-                    success: false,
-                    message: "Unable to check account."
-                });
-            }
+            const existingUser =
+                users.find(
+                    user =>
+                        user.email.toLowerCase() ===
+                        email.toLowerCase()
+                );
 
             if (existingUser) {
                 return res.status(409).json({
                     success: false,
-                    message: "An account with this email already exists."
+                    message:
+                        "An account with this email already exists."
                 });
             }
 
-            const hashedPassword = await bcrypt.hash(password, 10);
+            const hashedPassword =
+                await bcrypt.hash(
+                    password,
+                    10
+                );
 
-            const { data: newUser, error: insertError } = await supabase
-                .from("users")
-                .insert({
-                    name: name.trim(),
-                    email: normalizedEmail,
-                    password: hashedPassword,
-                    subscription: "free"
-                })
-                .select("id,name,email,subscription")
-                .single();
+            const newUser = {
+                id:
+                    crypto.randomUUID(),
 
-            if (insertError) {
-                console.error("Signup database insert error:", insertError);
-                return res.status(500).json({
-                    success: false,
-                    message: "Unable to create account."
-                });
-            }
+                name:
+                    name,
 
-            return res.status(201).json({
+                email:
+                    email.toLowerCase(),
+
+                password:
+                    hashedPassword,
+
+                savedStories: [],
+
+                subscription:
+                    "free",
+
+                createdAt:
+                    new Date().toISOString()
+            };
+
+            users.push(
+                newUser
+            );
+
+            writeUsers(
+                users
+            );
+
+            res.status(201).json({
                 success: true,
-                message: "Account created successfully.",
+                message:
+                    "Account created successfully.",
                 user: {
-                    id: newUser.id,
-                    name: newUser.name,
-                    email: newUser.email,
-                    subscription: newUser.subscription || "free"
+                    id:
+                        newUser.id,
+                    name:
+                        newUser.name,
+                    email:
+                        newUser.email,
+                    subscription:
+                        newUser.subscription
                 }
             });
 
         } catch (error) {
-            console.error("Signup error:", error);
-            return res.status(500).json({
+            console.error(
+                "Signup error:",
+                error
+            );
+
+            res.status(500).json({
                 success: false,
-                message: "Unable to create account."
+                message:
+                    "Unable to create account."
             });
         }
     }
@@ -486,67 +497,89 @@ app.post(
     "/api/signin",
     async (req, res) => {
         try {
-            const { email, password } = req.body;
+            const {
+                email,
+                password
+            } = req.body;
 
-            if (!email || !password) {
+            if (
+                !email ||
+                !password
+            ) {
                 return res.status(400).json({
                     success: false,
-                    message: "Email and password are required."
+                    message:
+                        "Email and password are required."
                 });
             }
 
-            const normalizedEmail = email.trim().toLowerCase();
+            const users =
+                readUsers();
 
-            const { data: user, error: userError } = await supabase
-                .from("users")
-                .select("id,name,email,password,subscription")
-                .eq("email", normalizedEmail)
-                .maybeSingle();
-
-            if (userError) {
-                console.error("Signin database error:", userError);
-                return res.status(500).json({
-                    success: false,
-                    message: "Unable to sign in."
-                });
-            }
+            const user =
+                users.find(
+                    item =>
+                        item.email.toLowerCase() ===
+                        email.toLowerCase()
+                );
 
             if (!user) {
                 return res.status(401).json({
                     success: false,
-                    message: "Invalid email or password."
+                    message:
+                        "Invalid email or password."
                 });
             }
 
-            const passwordMatch = await bcrypt.compare(password, user.password);
+            const passwordMatch =
+                await bcrypt.compare(
+                    password,
+                    user.password
+                );
 
             if (!passwordMatch) {
                 return res.status(401).json({
                     success: false,
-                    message: "Invalid email or password."
+                    message:
+                        "Invalid email or password."
                 });
             }
 
-            return res.json({
+            res.json({
                 success: true,
-                message: "Sign in successful.",
+                message:
+                    "Sign in successful.",
                 user: {
-                    id: user.id,
-                    name: user.name,
-                    email: user.email,
-                    subscription: user.subscription || "free"
+                    id:
+                        user.id,
+                    name:
+                        user.name,
+                    email:
+                        user.email,
+                    subscription:
+                        user.subscription ||
+                        "free"
                 }
             });
 
         } catch (error) {
-            console.error("Signin error:", error);
-            return res.status(500).json({
+            console.error(
+                "Signin error:",
+                error
+            );
+
+            res.status(500).json({
                 success: false,
-                message: "Unable to sign in."
+                message:
+                    "Unable to sign in."
             });
         }
     }
 );
+
+// =====================================================
+// SAVE STORY
+// =====================================================
 
 app.post(
     "/api/save-story",
@@ -730,7 +763,7 @@ app.post(
                 });
             }
 
-            // â‚¹99 = 9900 paise
+            // ₹99 = 9900 paise
             const options = {
                 amount: 9900,
                 currency: "INR",
@@ -921,17 +954,6 @@ app.post(
 // START SERVER
 // =====================================================
 
-/* =========================================================
-   SERVE GEN G PULSE FRONTEND
-========================================================= */
-
-const FRONTEND_DIR = path.join(__dirname, "..", "frontend");
-
-app.use(express.static(FRONTEND_DIR));
-
-app.get("/", (req, res) => {
-    res.sendFile(path.join(FRONTEND_DIR, "index.html"));
-});
 app.listen(
     PORT,
     () => {
@@ -950,6 +972,3 @@ app.listen(
         );
     }
 );
-
-async function getRssNews(query){const u=`https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=en-IN&gl=IN&ceid=IN:en`;const r=await axios.get(u,{timeout:10000,headers:{"User-Agent":"Mozilla/5.0"}});const items=r.data.match(/<item>[\s\S]*?<\/item>/g)||[];const tag=(x,n)=>{const m=x.match(new RegExp("<"+n+">([\\s\\S]*?)</"+n+">"));return m?m[1].replace("<![CDATA[","").replace("]]>","").replace(/&amp;/g,"&").replace(/&quot;/g,"\"").replace(/&#39;/g,String.fromCharCode(39)).replace(/&lt;/g,"<").replace(/&gt;/g,">").trim():""};const articles=items.slice(0,10).map((x,i)=>{const link=tag(x,"link"),title=tag(x,"title"),description=tag(x,"description"),pub=tag(x,"pubDate"),source=tag(x,"source")||"Google News";return{id:"rss-"+i+"-"+Date.now(),title,description,content:description,url:link,image:"",publishedAt:pub,source:{name:source},category:"General"}}).filter(x=>x.title&&x.url);return{success:true,query,totalArticles:articles.length,articles}}
-

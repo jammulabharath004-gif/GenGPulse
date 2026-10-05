@@ -921,17 +921,6 @@ app.post(
 // START SERVER
 // =====================================================
 
-/* =========================================================
-   SERVE GEN G PULSE FRONTEND
-========================================================= */
-
-const FRONTEND_DIR = path.join(__dirname, "..", "frontend");
-
-app.use(express.static(FRONTEND_DIR));
-
-app.get("/", (req, res) => {
-    res.sendFile(path.join(FRONTEND_DIR, "index.html"));
-});
 app.listen(
     PORT,
     () => {
@@ -950,6 +939,3 @@ app.listen(
         );
     }
 );
-
-async function getRssNews(query){const u=`https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=en-IN&gl=IN&ceid=IN:en`;const r=await axios.get(u,{timeout:10000,headers:{"User-Agent":"Mozilla/5.0"}});const items=r.data.match(/<item>[\s\S]*?<\/item>/g)||[];const tag=(x,n)=>{const m=x.match(new RegExp("<"+n+">([\\s\\S]*?)</"+n+">"));return m?m[1].replace("<![CDATA[","").replace("]]>","").replace(/&amp;/g,"&").replace(/&quot;/g,"\"").replace(/&#39;/g,String.fromCharCode(39)).replace(/&lt;/g,"<").replace(/&gt;/g,">").trim():""};const articles=items.slice(0,10).map((x,i)=>{const link=tag(x,"link"),title=tag(x,"title"),description=tag(x,"description"),pub=tag(x,"pubDate"),source=tag(x,"source")||"Google News";return{id:"rss-"+i+"-"+Date.now(),title,description,content:description,url:link,image:"",publishedAt:pub,source:{name:source},category:"General"}}).filter(x=>x.title&&x.url);return{success:true,query,totalArticles:articles.length,articles}}
-

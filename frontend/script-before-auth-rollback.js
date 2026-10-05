@@ -3052,3 +3052,218 @@ function timeAgo(dateValue){if(!dateValue)return"Recently";const date=new Date(d
 const fallbackImages={technology:"https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=900&q=80",tech:"https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=900&q=80",science:"https://images.unsplash.com/photo-1532094349884-543bc11b234d?auto=format&fit=crop&w=900&q=80",space:"https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?auto=format&fit=crop&w=900&q=80",sports:"https://images.unsplash.com/photo-1461896836934-ffe607ba8211?auto=format&fit=crop&w=900&q=80",gaming:"https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=900&q=80",entertainment:"https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&w=900&q=80",business:"https://images.unsplash.com/photo-1556761175-b413da4baf72?auto=format&fit=crop&w=900&q=80",finance:"https://images.unsplash.com/photo-1559526324-593bc073d938?auto=format&fit=crop&w=900&q=80",career:"https://images.unsplash.com/photo-1521737711867-e3b97375f902?auto=format&fit=crop&w=900&q=80",education:"https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=900&q=80",jobs:"https://images.unsplash.com/photo-1521737711867-e3b97375f902?auto=format&fit=crop&w=900&q=80",politics:"https://images.unsplash.com/photo-1529107386315-e1a2ed48a620?auto=format&fit=crop&w=900&q=80",startup:"https://images.unsplash.com/photo-1556761175-4b46a572b786?auto=format&fit=crop&w=900&q=80",health:"https://images.unsplash.com/photo-1505751172876-fa1923c5c528?auto=format&fit=crop&w=900&q=80",general:"https://images.unsplash.com/photo-1504711434969-e33886168f5c?auto=format&fit=crop&w=900&q=80"};function normalizeArticle(article,index){if(!article||typeof article!=="object")return null;const title=article.title||article.headline||article.name||"Untitled story";const description=article.description||article.summary||article.excerpt||article.content||"No description available.";const content=article.content||description;const url=safeUrl(article.url||article.link||article.articleUrl||"");const publishedAt=article.publishedAt||article.published_at||article.date||article.published||article.createdAt||"";const sourceName=getSourceName(article);const category=normalizeCategory(article);const id=String(article.id||article.guid||article.url||`${title}-${index}`);const key=String(category).toLowerCase();const supplied=safeUrl(article.image||article.imageUrl||article.urlToImage||article.thumbnail||"");const image=supplied||fallbackImages[key]||fallbackImages.general;return {...article,id,title:String(title),description:String(description).replace(/\s+/g," ").trim(),content:String(content),url,image,publishedAt,source:{name:String(sourceName)},category}}
 
 state.flashCategory="All";function renderFlashFilters(){const header=document.querySelector("#flashView .page-header");if(!header)return;let bar=document.getElementById("flashFilterBar");if(!bar){bar=document.createElement("div");bar.id="flashFilterBar";bar.style.cssText="display:flex;gap:8px;flex-wrap:wrap;margin-top:18px;overflow-x:auto;padding-bottom:4px;";header.appendChild(bar)}bar.innerHTML=["All",...availableCategories].map(c=>`<button type="button" class="interest-btn ${state.flashCategory===c?"active":""}" data-flash-category="${escapeHtml(c)}">${escapeHtml(c)}</button>`).join("")}function renderFlash(){const grid=$("#flashNewsGrid");if(!grid)return;renderFlashFilters();const articles=state.flashCategory==="All"?state.articles:state.articles.filter(a=>categoryKey(normalizeCategory(a))===categoryKey(state.flashCategory));if(!articles.length){grid.innerHTML=emptyState("","No stories in this category","Try another topic or select All.");return}grid.innerHTML=articles.map(createNewsCard).join("")}document.addEventListener("click",function(e){const b=e.target.closest("[data-flash-category]");if(!b)return;e.preventDefault();state.flashCategory=b.dataset.flashCategory||"All";renderFlash()},true)
+(function(){
+
+    function openGenGPulseAuth(mode){
+
+        let modal=document.getElementById("authModal");
+
+        if(!modal){
+
+            modal=document.createElement("div");
+            modal.id="authModal";
+
+            modal.innerHTML=`
+                <div class="auth-box">
+
+                    <button type="button" id="authClose" class="auth-close">×</button>
+
+                    <div class="auth-kicker">GEN G PULSE</div>
+
+                    <h2 id="authTitle">Sign In</h2>
+
+                    <form id="authForm">
+
+                        <div id="authNameField" class="auth-field hidden">
+                            <label>Name</label>
+                            <input id="authName" type="text" autocomplete="name">
+                        </div>
+
+                        <div class="auth-field">
+                            <label>Email</label>
+                            <input id="authEmail" type="email" required autocomplete="email">
+                        </div>
+
+                        <div class="auth-field">
+                            <label>Password</label>
+                            <input id="authPassword" type="password" required minlength="6" autocomplete="current-password">
+                        </div>
+
+                        <div id="authMessage"></div>
+
+                        <button type="submit" id="authSubmit" class="primary-btn">
+                            Sign In
+                        </button>
+
+                    </form>
+
+                    <button type="button" id="authSwitch" class="auth-switch">
+                        Create a new account
+                    </button>
+
+                </div>
+            `;
+
+            document.body.appendChild(modal);
+
+            document.getElementById("authClose").onclick=function(){
+                modal.remove();
+            };
+
+            modal.addEventListener("click",function(e){
+                if(e.target===modal){
+                    modal.remove();
+                }
+            });
+
+            document.getElementById("authForm").addEventListener("submit",async function(e){
+
+                e.preventDefault();
+
+                const submit=document.getElementById("authSubmit");
+                const message=document.getElementById("authMessage");
+
+                submit.disabled=true;
+                submit.textContent="Please wait...";
+                message.textContent="";
+
+                const isSignup=document.getElementById("authNameField").classList.contains("show");
+
+                const body=isSignup
+                    ? {
+                        name:document.getElementById("authName").value.trim(),
+                        email:document.getElementById("authEmail").value.trim(),
+                        password:document.getElementById("authPassword").value
+                    }
+                    : {
+                        email:document.getElementById("authEmail").value.trim(),
+                        password:document.getElementById("authPassword").value
+                    };
+
+                try{
+
+                    const response=await fetch(
+                        isSignup ? "/api/signup" : "/api/signin",
+                        {
+                            method:"POST",
+                            headers:{
+                                "Content-Type":"application/json"
+                            },
+                            body:JSON.stringify(body)
+                        }
+                    );
+
+                    const data=await response.json();
+
+                    if(!response.ok || !data.success){
+                        throw new Error(
+                            data.message || "Authentication failed."
+                        );
+                    }
+
+                    state.currentUser=data.user;
+
+                    localStorage.setItem(
+                        "genGPulseUser",
+                        JSON.stringify(data.user)
+                    );
+
+                    const header=document.getElementById("headerSignInBtn");
+
+                    if(header){
+                        header.textContent=data.user.name || "Profile";
+                    }
+
+                    modal.remove();
+
+                    if(typeof showToast==="function"){
+                        showToast(
+                            isSignup
+                                ? "Account created successfully."
+                                : "Signed in successfully."
+                        );
+                    }
+
+                }catch(error){
+
+                    message.textContent=error.message;
+
+                }finally{
+
+                    submit.disabled=false;
+                    submit.textContent=isSignup
+                        ? "Create Account"
+                        : "Sign In";
+                }
+
+            });
+
+            document.getElementById("authSwitch").onclick=function(){
+
+                const nameField=document.getElementById("authNameField");
+                const title=document.getElementById("authTitle");
+                const submit=document.getElementById("authSubmit");
+                const switchButton=document.getElementById("authSwitch");
+
+                const signup=!nameField.classList.contains("show");
+
+                nameField.classList.toggle("show",signup);
+                nameField.classList.toggle("hidden",!signup);
+
+                title.textContent=signup
+                    ? "Create Account"
+                    : "Sign In";
+
+                submit.textContent=signup
+                    ? "Create Account"
+                    : "Sign In";
+
+                switchButton.textContent=signup
+                    ? "Already have an account? Sign in"
+                    : "Create a new account";
+
+                document.getElementById("authPassword").setAttribute(
+                    "autocomplete",
+                    signup ? "new-password" : "current-password"
+                );
+            };
+        }
+
+        const nameField=document.getElementById("authNameField");
+        const title=document.getElementById("authTitle");
+        const submit=document.getElementById("authSubmit");
+
+        const signup=mode==="signup";
+
+        nameField.classList.toggle("show",signup);
+        nameField.classList.toggle("hidden",!signup);
+
+        title.textContent=signup
+            ? "Create Account"
+            : "Sign In";
+
+        submit.textContent=signup
+            ? "Create Account"
+            : "Sign In";
+
+        document.getElementById("authMessage").textContent="";
+
+        modal.style.display="flex";
+    }
+
+    window.openGenGPulseAuth=openGenGPulseAuth;
+
+    document.addEventListener("click",function(e){
+
+        const button=e.target.closest("#headerSignInBtn");
+
+        if(!button){
+            return;
+        }
+
+        e.preventDefault();
+
+        openGenGPulseAuth("signin");
+    });
+
+})();

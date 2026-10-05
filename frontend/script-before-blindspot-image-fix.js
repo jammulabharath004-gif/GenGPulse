@@ -213,7 +213,7 @@ const fallbackBlindspotArticles = [
         content:
             "Sports technology can collect performance data such as movement, speed, workload and recovery indicators. Coaches can use this information to make training decisions.",
         url: "",
-        image: "https://images.unsplash.com/photo-1461896836934-ffe607ba8211?auto=format&fit=crop&w=1200&q=80",
+        image: "",
         publishedAt: hoursAgo(2),
         source: {
             name: "Gen G Pulse"
@@ -229,7 +229,7 @@ const fallbackBlindspotArticles = [
         content:
             "Game development tools allow beginners to experiment with 2D and 3D projects without building an engine from scratch.",
         url: "",
-        image: "https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=1200&q=80",
+        image: "",
         publishedAt: hoursAgo(7),
         source: {
             name: "Gen G Pulse"
@@ -245,7 +245,7 @@ const fallbackBlindspotArticles = [
         content:
             "Digital platforms use recommendation systems to personalize content discovery. This can make finding new content easier while also creating personalized content bubbles.",
         url: "",
-        image: "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&w=1200&q=80",
+        image: "",
         publishedAt: hoursAgo(12),
         source: {
             name: "Gen G Pulse"
@@ -261,51 +261,51 @@ const fallbackBlindspotArticles = [
 
 const categoryIcons = {
 
-    technology: "??",
+    technology: "ðŸ’»",
 
-    tech: "??",
+    tech: "ðŸ’»",
 
-    science: "??",
+    science: "ðŸ”¬",
 
-    space: "??",
+    space: "Ã°Å¸Å¡â‚¬",
 
-    career: "??",
+    career: "ðŸ’¼",
 
-    jobs: "??",
+    jobs: "ðŸ’¼",
 
-    startup: "??",
+    startup: "Ã°Å¸Å¡â‚¬",
 
-    startups: "??",
+    startups: "Ã°Å¸Å¡â‚¬",
 
-    finance: "??",
+    finance: "ðŸ’°",
 
-    business: "??",
+    business: "Ã°Å¸â€œË†",
 
-    education: "??",
+    education: "ðŸŽ“",
 
-    campus: "??",
+    campus: "ðŸ«",
 
-    sports: "?",
+    sports: "âš½",
 
-    gaming: "??",
+    gaming: "ðŸŽ®",
 
-    entertainment: "??",
+    entertainment: "ðŸŽ¬",
 
-    celebrity: "?",
+    celebrity: "â­",
 
-    fashion: "??",
+    fashion: "ðŸ‘Ÿ",
 
-    health: "??",
+    health: "â¤ï¸",
 
-    policy: "???",
+    policy: "ðŸ›ï¸",
 
-    politics: "???",
+    politics: "ðŸ›ï¸",
 
-    environment: "??",
+    environment: "ðŸŒ±",
 
-    climate: "??",
+    climate: "ðŸŒ",
 
-    default: "??"
+    default: "ðŸ“°"
 };
 
 
@@ -1041,7 +1041,7 @@ function showLoadingState() {
     const loadingHtml = `
         <div class="loading-card">
             <div>
-                ?? Loading Gen Z news...
+                ðŸ“° Loading Gen Z news...
             </div>
         </div>
     `;
@@ -1151,7 +1151,7 @@ function createNewsCard(article) {
                         data-id="${escapeHtml(article.id)}"
                         data-ai-type="summary"
                     >
-                        ?? Summary
+                        ðŸ¤– Summary
                     </button>
 
 
@@ -1160,7 +1160,7 @@ function createNewsCard(article) {
                         data-id="${escapeHtml(article.id)}"
                         data-ai-type="explain"
                     >
-                        ?? Explain
+                        ðŸ¤– Explain
                     </button>
 
 
@@ -1168,7 +1168,7 @@ function createNewsCard(article) {
                         class="action-btn save ${saved ? "active" : ""}"
                         data-id="${escapeHtml(article.id)}"
                     >
-                        ${saved ? "?" : "?"} Save
+                        ${saved ? "Ã¢Ëœâ€¦" : "Ã¢Ëœâ€ "} Save
                     </button>
 
 
@@ -1180,7 +1180,7 @@ function createNewsCard(article) {
                                     class="action-btn read article-read"
                                     data-id="${escapeHtml(article.id)}"
                                 >
-                                    ?? Read
+                                    ðŸ“° Read
                                 </button>
                             `
 
@@ -1220,7 +1220,7 @@ function renderHome() {
 
         grid.innerHTML =
             emptyState(
-                "??",
+                "ðŸ“°",
                 "No stories yet",
                 "News will appear here when available."
             );
@@ -1260,7 +1260,7 @@ function renderFlash() {
 
         grid.innerHTML =
             emptyState(
-                "??",
+                "ðŸ“°",
                 "No news available",
                 "Try refreshing the feed."
             );
@@ -1300,7 +1300,7 @@ function renderExplain() {
 
         grid.innerHTML =
             emptyState(
-                "??",
+                "ðŸ¤–",
                 "No explainers yet",
                 "Stories will appear here when news is available."
             );
@@ -1345,9 +1345,9 @@ function renderSaved() {
 
         grid.innerHTML =
             emptyState(
-                "??",
+                "ðŸ”–",
                 "Nothing saved yet",
-                "Tap ? Save on a story to keep it here."
+                "Tap Ã¢Ëœâ€  Save on a story to keep it here."
             );
 
         return;
@@ -1406,7 +1406,7 @@ function toggleSave(id) {
         state.savedIds.push(id);
 
         showToast(
-            "Story saved ??"
+            "Story saved ðŸ”–"
         );
 
     } else {
@@ -1576,7 +1576,7 @@ async function openAiModal(
 
     if (type === "summary") {
 
-        icon.textContent = "??";
+        icon.textContent = "ðŸ¤–";
 
         label.textContent =
             "AI GENERATED SUMMARY";
@@ -1589,7 +1589,7 @@ async function openAiModal(
 
     } else {
 
-        icon.textContent = "??";
+        icon.textContent = "ðŸ§ ";
 
         label.textContent =
             "GEN Z EXPLAIN";
@@ -1871,7 +1871,7 @@ function createSwipeCard(
                         data-id="${escapeHtml(article.id)}"
                         data-ai-type="summary"
                     >
-                        ?? AI Generated<br>
+                        ðŸ¤– AI Generated<br>
                         Summary
                     </button>
 
@@ -1881,7 +1881,7 @@ function createSwipeCard(
                         data-id="${escapeHtml(article.id)}"
                         data-ai-type="explain"
                     >
-                        ?? Gen Z<br>
+                        ðŸ¤– Gen Z<br>
                         Explain
                     </button>
 
@@ -1890,7 +1890,7 @@ function createSwipeCard(
                         class="swipe-action read article-read"
                         data-id="${escapeHtml(article.id)}"
                     >
-                        ?? Read Full<br>
+                        ðŸ“° Read Full<br>
                         Article
                     </button>
 
@@ -1900,7 +1900,7 @@ function createSwipeCard(
                 <div class="swipe-secondary-actions">
 
                     <button type="button" class="save ${saved ? "active" : ""}" data-id="${escapeHtml(article.id)}" onclick="toggleSave(this.dataset.id); event.stopPropagation();">
-                        ${saved ? "? Saved" : "? Save"}
+                        ${saved ? "Ã¢Ëœâ€¦ Saved" : "Ã¢Ëœâ€  Save"}
                     </button>
 
 
@@ -1908,7 +1908,7 @@ function createSwipeCard(
                         class="not-interested"
                         data-id="${escapeHtml(article.id)}"
                     >
-                        ?? Not interested
+                        ðŸ‘Ž Not interested
                     </button>
 
                 </div>
@@ -1947,7 +1947,7 @@ function renderSwiping() {
 
         deck.innerHTML =
             emptyState(
-                "??",
+                "ðŸ‘†",
                 "No stories",
                 "There are no stories to swipe right now."
             );
@@ -2043,7 +2043,7 @@ function renderBlindspot() {
 
         deck.innerHTML =
             emptyState(
-                "???",
+                "ðŸ•³ï¸",
                 "Blindspot is empty",
                 "Choose some topics in Radar."
             );
@@ -2438,7 +2438,7 @@ function renderRadar() {
                     >
                         ${categoryIcon(category)}
                         ${escapeHtml(category)}
-                        ${active ? " ?" : ""}
+                        ${active ? " âœ“" : ""}
                     </button>
                 `;
             })
@@ -3037,18 +3037,19 @@ document.addEventListener(
 
 function showView(viewName){const target=document.getElementById(viewName+"View");if(!target){console.warn("View not found: "+viewName);return;}document.querySelectorAll(".app-view").forEach(function(view){view.classList.remove("active");view.hidden=true;});target.classList.add("active");target.hidden=false;document.querySelectorAll(".nav-item").forEach(function(btn){btn.classList.toggle("active",btn.dataset.view===viewName);});state.currentView=viewName;if(viewName==="swiping"){renderSwiping();}if(viewName==="blindspot"){renderBlindspot();}if(viewName==="saved"){renderSaved();}if(viewName==="radar"){renderRadar();}window.scrollTo({top:0,behavior:"smooth"});}
 
+async function openAiModal(article,type){if(!article)return;const modal=document.getElementById("aiModal"),title=document.getElementById("modalTitle"),label=document.getElementById("modalLabel"),icon=document.getElementById("modalIcon"),content=document.getElementById("modalContent");if(!modal||!content)return;modal.classList.remove("hidden");const sourceName=article.source?.name||article.source||"Unknown source";if(type==="summary"){icon.textContent="ðŸ¤–";label.textContent="AI GENERATED SUMMARY";title.textContent="Quick Summary";content.textContent=createLocalSummary(article)}else{icon.textContent="ðŸ§ ";label.textContent="GEN Z EXPLAIN";title.textContent="Explained Simply";content.textContent=createLocalExplain(article)}try{const endpoint=AI_ENDPOINTS[type];if(!endpoint)return;const r=await fetch(endpoint,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({article:{title:article.title,description:article.description,content:article.content,source:sourceName}})});if(!r.ok)return;const d=await r.json();const t=d.summary||d.explanation||d.text||d.result||d.analysis;if(t)content.textContent=t}catch(e){console.warn("AI unavailable; local result kept.")}}
 
 
-document.addEventListener("click",async function(e){const b=e.target.closest(".ai-btn");if(!b)return;e.preventDefault();e.stopImmediatePropagation();const a=findArticle(b.dataset.id);if(!a)return;const m=document.getElementById("aiModal"),t=document.getElementById("modalTitle"),l=document.getElementById("modalLabel"),i=document.getElementById("modalIcon"),c=document.getElementById("modalContent");if(!m||!c)return;m.classList.remove("hidden");const type=b.dataset.aiType==="explain"?"explain":"summary";if(type==="summary"){i.textContent="??";l.textContent="AI GENERATED SUMMARY";t.textContent="Quick Summary";c.textContent=createLocalSummary(a)}else{i.textContent="??";l.textContent="GEN Z EXPLAIN";t.textContent="Explained Simply";c.textContent=createLocalExplain(a)}try{const r=await fetch(AI_ENDPOINTS[type],{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({article:{title:a.title,description:a.description,content:a.content,source:a.source?.name||a.source}})});if(!r.ok)return;const d=await r.json();const x=d.summary||d.explanation||d.text||d.result||d.analysis;if(x)c.textContent=x}catch(err){console.warn("AI unavailable; local result kept.",err)}},true)
+document.addEventListener("click",async function(e){const b=e.target.closest(".ai-btn");if(!b)return;e.preventDefault();e.stopImmediatePropagation();const a=findArticle(b.dataset.id);if(!a)return;const m=document.getElementById("aiModal"),t=document.getElementById("modalTitle"),l=document.getElementById("modalLabel"),i=document.getElementById("modalIcon"),c=document.getElementById("modalContent");if(!m||!c)return;m.classList.remove("hidden");const type=b.dataset.aiType==="explain"?"explain":"summary";if(type==="summary"){i.textContent="ðŸ¤–";l.textContent="AI GENERATED SUMMARY";t.textContent="Quick Summary";c.textContent=createLocalSummary(a)}else{i.textContent="ðŸ§ ";l.textContent="GEN Z EXPLAIN";t.textContent="Explained Simply";c.textContent=createLocalExplain(a)}try{const r=await fetch(AI_ENDPOINTS[type],{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({article:{title:a.title,description:a.description,content:a.content,source:a.source?.name||a.source}})});if(!r.ok)return;const d=await r.json();const x=d.summary||d.explanation||d.text||d.result||d.analysis;if(x)c.textContent=x}catch(err){console.warn("AI unavailable; local result kept.",err)}},true)
+document.addEventListener("click",async function(e){const b=e.target.closest(".ai-btn");if(!b)return;e.preventDefault();e.stopImmediatePropagation();const a=findArticle(b.dataset.id);if(!a)return;const m=document.getElementById("aiModal"),t=document.getElementById("modalTitle"),l=document.getElementById("modalLabel"),i=document.getElementById("modalIcon"),c=document.getElementById("modalContent");if(!m||!c)return;m.classList.remove("hidden");const type=b.dataset.aiType==="explain"?"explain":"summary";if(type==="summary"){i.textContent="ðŸ¤–";l.textContent="AI GENERATED SUMMARY";t.textContent="Quick Summary";c.textContent=createLocalSummary(a)}else{i.textContent="ðŸ§ ";l.textContent="GEN Z EXPLAIN";t.textContent="Explained Simply";c.textContent=createLocalExplain(a)}try{const r=await fetch(AI_ENDPOINTS[type],{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({article:{title:a.title,description:a.description,content:a.content,source:a.source?.name||a.source}})});if(!r.ok)return;const d=await r.json();const x=d.summary||d.explanation||d.text||d.result||d.analysis;if(x)c.textContent=x}catch(err){console.warn("AI unavailable; local result kept.",err)}},true)
 function findArticle(id){const allArticles=[...state.articles,...fallbackBlindspotArticles];return allArticles.find(article=>String(article.id)===String(id));}
 document.addEventListener("click",function(e){const b=e.target.closest(".opportunity-btn");if(!b)return;e.preventDefault();const u=b.dataset.opportunityUrl;if(u)window.open(u,"_blank","noopener,noreferrer");},true)
+function renderSaved(){const grid=$("#savedGrid");if(!grid)return;const allArticles=[...state.articles,...fallbackBlindspotArticles];const articles=[];const seen=new Set();for(const article of allArticles){if(article&&state.savedIds.includes(article.id)&&!seen.has(article.id)){seen.add(article.id);articles.push(article);}}if(!articles.length){grid.innerHTML=emptyState("??","Nothing saved yet","Tap ? Save on a story to keep it here.");return;}grid.innerHTML=articles.map(createNewsCard).join("");}
 
 
 
 
-function renderSaved(){const grid=$("#savedGrid");if(!grid)return;const all=[...state.articles,...fallbackBlindspotArticles];const articles=state.savedIds.map(id=>all.find(a=>String(a.id)===String(id))).filter(Boolean);if(!articles.length){grid.innerHTML=emptyState("??","Nothing saved yet","Tap ? Save on a story to keep it here.");return;}grid.innerHTML=articles.map(createNewsCard).join("");}
-function toggleSave(id){const key=String(id);const all=[...state.articles,...fallbackBlindspotArticles];const article=all.find(a=>String(a.id)===key);if(!article)return;let saved=[];try{saved=JSON.parse(localStorage.getItem("genGPulseSavedArticles")||"[]");if(!Array.isArray(saved))saved=[]}catch{saved=[]}const i=saved.findIndex(a=>String(a.id)===key);if(i===-1){saved.push(article);state.savedIds=Array.from(new Set([...state.savedIds,key]));showToast("Story saved");}else{saved.splice(i,1);state.savedIds=state.savedIds.filter(x=>String(x)!==key);showToast("Removed from Saved");}localStorage.setItem("genGPulseSavedArticles",JSON.stringify(saved));saveSavedIds();renderHome();renderFlash();renderExplain();renderSaved();renderSwiping();renderBlindspot()}function renderSaved(){const grid=$("#savedGrid");if(!grid)return;let saved=[];try{saved=JSON.parse(localStorage.getItem("genGPulseSavedArticles")||"[]");if(!Array.isArray(saved))saved=[]}catch{saved=[]}if(!saved.length){grid.innerHTML=emptyState("??","Nothing saved yet","Tap ? Save on a story to keep it here.");return}grid.innerHTML=saved.map(createNewsCard).join("")}
+function renderSaved(){const grid=$("#savedGrid");if(!grid)return;const all=[...state.articles,...fallbackBlindspotArticles];const articles=state.savedIds.map(id=>all.find(a=>String(a.id)===String(id))).filter(Boolean);if(!articles.length){grid.innerHTML=emptyState("🔖","Nothing saved yet","Tap ☆ Save on a story to keep it here.");return;}grid.innerHTML=articles.map(createNewsCard).join("");}
+function toggleSave(id){const key=String(id);const all=[...state.articles,...fallbackBlindspotArticles];const article=all.find(a=>String(a.id)===key);if(!article)return;let saved=[];try{saved=JSON.parse(localStorage.getItem("genGPulseSavedArticles")||"[]");if(!Array.isArray(saved))saved=[]}catch{saved=[]}const i=saved.findIndex(a=>String(a.id)===key);if(i===-1){saved.push(article);state.savedIds=Array.from(new Set([...state.savedIds,key]));showToast("Story saved");}else{saved.splice(i,1);state.savedIds=state.savedIds.filter(x=>String(x)!==key);showToast("Removed from Saved");}localStorage.setItem("genGPulseSavedArticles",JSON.stringify(saved));saveSavedIds();renderHome();renderFlash();renderExplain();renderSaved();renderSwiping();renderBlindspot()}function renderSaved(){const grid=$("#savedGrid");if(!grid)return;let saved=[];try{saved=JSON.parse(localStorage.getItem("genGPulseSavedArticles")||"[]");if(!Array.isArray(saved))saved=[]}catch{saved=[]}if(!saved.length){grid.innerHTML=emptyState("🔖","Nothing saved yet","Tap ☆ Save on a story to keep it here.");return}grid.innerHTML=saved.map(createNewsCard).join("")}
 function timeAgo(dateValue){if(!dateValue)return"Recently";const date=new Date(dateValue);if(Number.isNaN(date.getTime()))return"Recently";let diffMs=Date.now()-date.getTime();if(diffMs<0)diffMs=0;const minutes=Math.floor(diffMs/60000);if(minutes<1)return"Just now";if(minutes<60)return`${minutes} minute${minutes===1?"":"s"} ago`;const hours=Math.floor(minutes/60);if(hours<24)return`${hours} hour${hours===1?"":"s"} ago`;const days=Math.floor(hours/24);if(days===1)return"Yesterday";if(days<7)return`${days} days ago`;return date.toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"})}
 const fallbackImages={technology:"https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=900&q=80",tech:"https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=900&q=80",science:"https://images.unsplash.com/photo-1532094349884-543bc11b234d?auto=format&fit=crop&w=900&q=80",space:"https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?auto=format&fit=crop&w=900&q=80",sports:"https://images.unsplash.com/photo-1461896836934-ffe607ba8211?auto=format&fit=crop&w=900&q=80",gaming:"https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=900&q=80",entertainment:"https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&w=900&q=80",business:"https://images.unsplash.com/photo-1556761175-b413da4baf72?auto=format&fit=crop&w=900&q=80",finance:"https://images.unsplash.com/photo-1559526324-593bc073d938?auto=format&fit=crop&w=900&q=80",career:"https://images.unsplash.com/photo-1521737711867-e3b97375f902?auto=format&fit=crop&w=900&q=80",education:"https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=900&q=80",jobs:"https://images.unsplash.com/photo-1521737711867-e3b97375f902?auto=format&fit=crop&w=900&q=80",politics:"https://images.unsplash.com/photo-1529107386315-e1a2ed48a620?auto=format&fit=crop&w=900&q=80",startup:"https://images.unsplash.com/photo-1556761175-4b46a572b786?auto=format&fit=crop&w=900&q=80",health:"https://images.unsplash.com/photo-1505751172876-fa1923c5c528?auto=format&fit=crop&w=900&q=80",general:"https://images.unsplash.com/photo-1504711434969-e33886168f5c?auto=format&fit=crop&w=900&q=80"};function normalizeArticle(article,index){if(!article||typeof article!=="object")return null;const title=article.title||article.headline||article.name||"Untitled story";const description=article.description||article.summary||article.excerpt||article.content||"No description available.";const content=article.content||description;const url=safeUrl(article.url||article.link||article.articleUrl||"");const publishedAt=article.publishedAt||article.published_at||article.date||article.published||article.createdAt||"";const sourceName=getSourceName(article);const category=normalizeCategory(article);const id=String(article.id||article.guid||article.url||`${title}-${index}`);const key=String(category).toLowerCase();const supplied=safeUrl(article.image||article.imageUrl||article.urlToImage||article.thumbnail||"");const image=supplied||fallbackImages[key]||fallbackImages.general;return {...article,id,title:String(title),description:String(description).replace(/\s+/g," ").trim(),content:String(content),url,image,publishedAt,source:{name:String(sourceName)},category}}
-
-state.flashCategory="All";function renderFlashFilters(){const header=document.querySelector("#flashView .page-header");if(!header)return;let bar=document.getElementById("flashFilterBar");if(!bar){bar=document.createElement("div");bar.id="flashFilterBar";bar.style.cssText="display:flex;gap:8px;flex-wrap:wrap;margin-top:18px;overflow-x:auto;padding-bottom:4px;";header.appendChild(bar)}bar.innerHTML=["All",...availableCategories].map(c=>`<button type="button" class="interest-btn ${state.flashCategory===c?"active":""}" data-flash-category="${escapeHtml(c)}">${escapeHtml(c)}</button>`).join("")}function renderFlash(){const grid=$("#flashNewsGrid");if(!grid)return;renderFlashFilters();const articles=state.flashCategory==="All"?state.articles:state.articles.filter(a=>categoryKey(normalizeCategory(a))===categoryKey(state.flashCategory));if(!articles.length){grid.innerHTML=emptyState("","No stories in this category","Try another topic or select All.");return}grid.innerHTML=articles.map(createNewsCard).join("")}document.addEventListener("click",function(e){const b=e.target.closest("[data-flash-category]");if(!b)return;e.preventDefault();state.flashCategory=b.dataset.flashCategory||"All";renderFlash()},true)
