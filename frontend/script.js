@@ -2582,7 +2582,8 @@ document.addEventListener(
     }
 );
 
-\n/* =====================================================
+
+/* =====================================================
    GEN_Z_PULSE_CLICKABLE_CARDS_V1
    ===================================================== */
 
@@ -3566,3 +3567,428 @@ document.addEventListener(
     }
 );
 
+
+
+/* =====================================================
+   GEN_Z_PULSE_FRONTEND_COMPATIBILITY_V1
+   ===================================================== */
+
+function initializeGenZPulseFrontend() {
+
+    try {
+
+        /* ---------------------------------------------
+           EXPORT IMPORTANT FUNCTIONS TO WINDOW
+           --------------------------------------------- */
+
+        window.showAccount = showAccount;
+        window.showModal = showModal;
+        window.closeModal = closeModal;
+        window.toast = toast;
+        window.scrollToId = scrollToId;
+
+        window.loadNews = loadNews;
+        window.searchToday = searchToday;
+
+        window.showNews = showNews;
+        window.openFullArticle = openFullArticle;
+
+        window.generateAISummary =
+            generateAISummary;
+
+        window.generateAIExplain =
+            generateAIExplain;
+
+        window.saveItem = saveItem;
+
+        window.openInterestPicker =
+            openInterestPicker;
+
+        window.saveInterests =
+            saveInterests;
+
+        window.openOpportunity =
+            openOpportunity;
+
+        window.startPlusCheckout =
+            startPlusCheckout;
+
+        window.setFilter = setFilter;
+
+        /* ---------------------------------------------
+           ACCOUNT BUTTONS
+           --------------------------------------------- */
+
+        const profileButtons =
+            document.querySelectorAll(
+                "header .profile"
+            );
+
+        if (profileButtons[0]) {
+
+            profileButtons[0].onclick =
+                () => {
+
+                    if (currentUser) {
+                        showModal("profile");
+                    } else {
+                        showAccount("signin");
+                    }
+
+                };
+        }
+
+        if (profileButtons[1]) {
+
+            profileButtons[1].onclick =
+                () =>
+                    showModal("profile");
+        }
+
+        const subscribeButton =
+            document.querySelector(
+                "header .btn"
+            );
+
+        if (subscribeButton) {
+
+            subscribeButton.onclick =
+                () =>
+                    showAccount("subscribe");
+        }
+
+        /* ---------------------------------------------
+           NAVIGATION
+           --------------------------------------------- */
+
+        document
+            .querySelectorAll(
+                ".navlinks button"
+            )
+            .forEach(
+                (button) => {
+
+                    button.onclick =
+                        () => {
+
+                            const target =
+                                button.dataset.target;
+
+                            if (target) {
+                                scrollToId(target);
+                            }
+                        };
+                }
+            );
+
+        /* ---------------------------------------------
+           SEARCH TODAY BUTTON
+           --------------------------------------------- */
+
+        const searchArea =
+            document.querySelector(
+                ".search"
+            );
+
+        if (
+            searchArea &&
+            !document.getElementById(
+                "searchTodayBtn"
+            )
+        ) {
+
+            const searchButton =
+                document.createElement(
+                    "button"
+                );
+
+            searchButton.id =
+                "searchTodayBtn";
+
+            searchButton.type =
+                "button";
+
+            searchButton.className =
+                "btn primary";
+
+            searchButton.textContent =
+                "Search Today";
+
+            searchButton.style.whiteSpace =
+                "nowrap";
+
+            searchButton.onclick =
+                searchToday;
+
+            searchArea.appendChild(
+                searchButton
+            );
+        }
+
+        const searchInput =
+            document.getElementById(
+                "search"
+            );
+
+        if (searchInput) {
+
+            if (
+                !searchInput.dataset
+                    .pulseSearchBound
+            ) {
+
+                searchInput.dataset
+                    .pulseSearchBound =
+                    "1";
+
+                searchInput.addEventListener(
+                    "keydown",
+                    (event) => {
+
+                        if (
+                            event.key ===
+                            "Enter"
+                        ) {
+
+                            event.preventDefault();
+
+                            searchToday();
+                        }
+                    }
+                );
+            }
+        }
+
+        /* ---------------------------------------------
+           RADAR SECTION
+           --------------------------------------------- */
+
+        ensureRadarSection();
+
+        updateRadarUI();
+
+        /* ---------------------------------------------
+           EXPLAIN BUTTON
+           --------------------------------------------- */
+
+        const explainButton =
+            document.querySelector(
+                "#explain .card:first-child .action"
+            );
+
+        if (explainButton) {
+
+            explainButton.onclick =
+                () =>
+                    showModal("explain");
+        }
+
+        const trustButton =
+            document.querySelector(
+                "#explain .card:nth-child(2) .action"
+            );
+
+        if (trustButton) {
+
+            trustButton.onclick =
+                () =>
+                    showModal("trust");
+        }
+
+        /* ---------------------------------------------
+           OPPORTUNITY BUTTONS
+           --------------------------------------------- */
+
+        const opportunityButtons =
+            document.querySelectorAll(
+                "#opportunity .apply"
+            );
+
+        const opportunities = [
+            {
+                title:
+                    "Scholarship application",
+
+                description:
+                    "Explore scholarship information, eligibility and important deadlines."
+            },
+
+            {
+                title:
+                    "Campus opportunity",
+
+                description:
+                    "Explore internships, competitions and student opportunities matched to your interests."
+            },
+
+            {
+                title:
+                    "Student event",
+
+                description:
+                    "Review the event details, understand why it matters and save it for later."
+            }
+        ];
+
+        opportunityButtons.forEach(
+            (button, index) => {
+
+                if (!opportunities[index]) {
+                    return;
+                }
+
+                button.onclick =
+                    () =>
+                        openOpportunity(
+                            opportunities[index]
+                                .title,
+
+                            opportunities[index]
+                                .description
+                        );
+            }
+        );
+
+        /* ---------------------------------------------
+           START NEWS LOADING
+           --------------------------------------------- */
+
+        if (
+            !items ||
+            items.length === 0
+        ) {
+
+            loadNews(
+                "India technology"
+            );
+        }
+
+        /* ---------------------------------------------
+           INTEREST DATA
+           --------------------------------------------- */
+
+        if (currentUser) {
+
+            loadInterestsForUser(
+                currentUser
+            );
+        }
+
+        console.log(
+            "Gen Z Pulse frontend initialized."
+        );
+
+    } catch (error) {
+
+        console.error(
+            "Gen Z Pulse frontend initialization error:",
+            error
+        );
+    }
+}
+
+/* Run after the complete document is ready */
+if (
+    document.readyState ===
+    "loading"
+) {
+
+    document.addEventListener(
+        "DOMContentLoaded",
+        initializeGenZPulseFrontend
+    );
+
+} else {
+
+    initializeGenZPulseFrontend();
+}
+
+/* =====================================================
+   GEN_Z_PULSE_RUNTIME_SAFETY_V1
+   ===================================================== */
+
+if (typeof openFullArticle !== "function") {
+
+    window.openFullArticle =
+        function (index) {
+
+            if (
+                typeof showNews ===
+                "function"
+            ) {
+                showNews(index);
+            }
+        };
+}
+
+if (typeof saveItem !== "function") {
+
+    window.saveItem =
+        function () {
+
+            if (
+                typeof toast ===
+                "function"
+            ) {
+                toast(
+                    "Saving is available after sign in"
+                );
+            }
+        };
+}
+
+if (
+    typeof startPlusCheckout !==
+    "function"
+) {
+
+    window.startPlusCheckout =
+        function () {
+
+            if (
+                typeof toast ===
+                "function"
+            ) {
+                toast(
+                    "Opening subscription..."
+                );
+            }
+        };
+}
+
+if (typeof setFilter !== "function") {
+
+    window.setFilter =
+        function (value, button) {
+
+            if (typeof filter !== "undefined") {
+                filter = value;
+            }
+
+            document
+                .querySelectorAll(".filter")
+                .forEach(
+                    (item) =>
+                        item.classList.remove(
+                            "active"
+                        )
+                );
+
+            if (button) {
+                button.classList.add(
+                    "active"
+                );
+            }
+
+            if (
+                typeof renderFlash ===
+                "function"
+            ) {
+                renderFlash();
+            }
+        };
+}
+
+console.log(
+    "Gen Z Pulse runtime safety loaded."
+);
