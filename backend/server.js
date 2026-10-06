@@ -1,4 +1,23 @@
-﻿const express = require("express");
+﻿async function getUserById(userId) {
+
+    ensureDatabase();
+
+    const {
+        data,
+        error
+    } = await supabase
+        .from("users")
+        .select("*")
+        .eq("id", userId)
+        .maybeSingle();
+
+    if (error) {
+        throw error;
+    }
+
+    return dbRowToUser(data);
+}
+const express = require("express");
 const cors = require("cors");
 const axios = require("axios");
 const fs = require("fs");
@@ -163,7 +182,7 @@ app.get("/api/health", (req, res) => {
     res.json({
         success: true,
         status: "healthy",
-        service: "Gen G Pulse API"
+        service: "Gen Z Pulse API"
     });
 });
 
@@ -229,7 +248,7 @@ app.get("/api/news", async (req, res) => {
                         q: query,
                         lang: "en",
                         country: "in",
-                        max: 10,
+                        max: 100,
                         apikey:
                             GNEWS_API_KEY
                     }
@@ -319,7 +338,7 @@ app.post(
                     );
 
             const prompt = `
-You are the AI news explainer for Gen G Pulse.
+You are the AI news explainer for Gen Z Pulse.
 
 Explain the following news article in simple language for Indian students and young adults.
 
@@ -691,56 +710,101 @@ app.get(
 app.post(
     "/api/create-plus-order",
     async (req, res) => {
+
         try {
+
             if (!razorpay) {
+
                 return res.status(500).json({
+
                     success: false,
+
                     message:
                         "Razorpay is not configured on the server."
                 });
             }
 
             const {
-                userId
+                userId,
+                email
             } = req.body;
 
-            if (!userId) {
+            if (!userId && !email) {
+
                 return res.status(400).json({
+
                     success: false,
+
                     message:
-                        "User ID is required."
+                        "User ID or email is required."
                 });
             }
 
-            const users =
-                readUsers();
+            // ------------------------------------------------
+            // Try user ID first
+            // ------------------------------------------------
 
-            const user =
-                users.find(
-                    item =>
-                        item.id ===
-                        userId
-                );
+            let user = null;
+
+            if (userId) {
+
+                user =
+                    await getUserById(
+                        String(userId)
+                    );
+            }
+
+            // ------------------------------------------------
+            // If the saved ID is old/stale,
+            // find the account using email.
+            // ------------------------------------------------
+
+            if (!user && email) {
+
+                user =
+                    await getUserByEmail(
+                        String(email)
+                            .trim()
+                            .toLowerCase()
+                    );
+            }
 
             if (!user) {
+
                 return res.status(404).json({
+
                     success: false,
+
                     message:
-                        "User not found."
+                        "User not found. Please sign out and sign in again."
                 });
             }
 
-            // â‚¹99 = 9900 paise
+            // ------------------------------------------------
+            // â‚¹49
+            // Razorpay uses paise.
+            // ------------------------------------------------
+
             const options = {
-                amount: 9900,
+
+                amount: 4900,
+
                 currency: "INR",
+
                 receipt:
-                    `gen-g-${Date.now()}`,
+                    `gen-z-${Date.now()}`,
+
                 notes: {
+
                     product:
-                        "Gen G Pulse Plus",
+                        "Gen Z Plus",
+
                     userId:
-                        userId,
+                        user.id,
+
+                    email:
+                        user.email,
+
                     plan:
                         "plus"
                 }
@@ -752,31 +816,58 @@ app.post(
                 );
 
             res.json({
+
                 success: true,
+
                 order: {
+
                     id:
                         order.id,
+
                     amount:
                         order.amount,
+
                     currency:
                         order.currency
                 },
+
+                orderId:
+                    order.id,
+
+                amount:
+                    order.amount,
+
+                currency:
+                    order.currency,
+
                 razorpayKeyId:
                     RAZORPAY_KEY_ID,
+
+                // Correct database user ID
+                userId:
+                    user.id,
+
+                email:
+                    user.email,
+
                 plan:
                     "plus"
             });
 
         } catch (error) {
+
             console.error(
                 "Razorpay order creation failed:",
                 error
             );
 
             res.status(500).json({
+
                 success: false,
+
                 message:
                     "Unable to create Razorpay order.",
+
                 error:
                     error.error?.description ||
                     error.message
@@ -784,32 +875,47 @@ app.post(
         }
     }
 );
-
-// =====================================================
-// RAZORPAY - VERIFY PAYMENT
-// =====================================================
+ // =====================================================
+ // RAZORPAY - VERIFY GEN Z PLUS PAYMENT
+ // =====================================================
 
 app.post(
     "/api/verify-plus-payment",
     async (req, res) => {
+
         try {
+
             const {
+                email,
                 userId,
                 razorpay_order_id,
                 razorpay_payment_id,
                 razorpay_signature
             } = req.body;
 
-            if (
-                !userId ||
+            if(
                 !razorpay_order_id ||
                 !razorpay_payment_id ||
                 !razorpay_signature
-            ) {
+            ){
+
                 return res.status(400).json({
+
                     success: false,
+
                     message:
                         "Payment verification details are incomplete."
+                });
+            }
+
+            if(!RAZORPAY_KEY_SECRET){
+
+                return res.status(500).json({
+
+                    success: false,
+
+                    message:
+                        "Razorpay secret key is not configured."
                 });
             }
 
@@ -826,39 +932,50 @@ app.post(
                     )
                     .digest("hex");
 
-            const signatureMatches =
-                crypto.timingSafeEqual(
-                    Buffer.from(
-                        generatedSignature
-                    ),
-                    Buffer.from(
-                        razorpay_signature
-                    )
-                );
+            if(
+                generatedSignature !==
+                razorpay_signature
+            ){
 
-            if (!signatureMatches) {
                 return res.status(400).json({
+
                     success: false,
+
                     message:
                         "Payment verification failed."
                 });
             }
 
-            const users =
-                readUsers();
+            // Find account by email first.
 
-            const user =
-                users.find(
-                    item =>
-                        item.id ===
-                        userId
-                );
+            let user = null;
 
-            if (!user) {
+            if(email){
+
+                user =
+                    await getUserByEmail(
+                        String(email)
+                            .trim()
+                            .toLowerCase()
+                    );
+            }
+
+            if(!user && userId){
+
+                user =
+                    await getUserById(
+                        String(userId)
+                    );
+            }
+
+            if(!user){
+
                 return res.status(404).json({
+
                     success: false,
+
                     message:
-                        "User not found."
+                        "User not found. Please sign in again."
                 });
             }
 
@@ -866,63 +983,82 @@ app.post(
                 "plus";
 
             user.subscriptionDetails = {
+
                 plan:
-                    "Gen G Pulse Plus",
+                    "Gen Z Plus",
+
                 amount:
-                    99,
+                    49,
+
                 currency:
                     "INR",
+
                 paymentId:
                     razorpay_payment_id,
+
                 orderId:
                     razorpay_order_id,
+
                 activatedAt:
                     new Date().toISOString()
             };
 
-            writeUsers(
-                users
-            );
+            const updatedUser =
+                await updateUser(
+                    user
+                );
 
             res.json({
+
                 success: true,
+
                 message:
-                    "Gen G Pulse Plus activated successfully.",
+                    "Gen Z Plus activated successfully.",
+
                 subscription:
                     "plus",
+
                 user: {
+
                     id:
-                        user.id,
+                        updatedUser.id,
+
                     name:
-                        user.name,
+                        updatedUser.name,
+
                     email:
-                        user.email,
+                        updatedUser.email,
+
                     subscription:
-                        user.subscription
+                        updatedUser.subscription
                 }
             });
 
-        } catch (error) {
+        } catch(error){
+
             console.error(
                 "Razorpay verification failed:",
                 error
             );
 
             res.status(500).json({
+
                 success: false,
+
                 message:
-                    "Unable to verify payment."
+                    "Unable to verify payment.",
+
+                error:
+                    error.message
             });
         }
     }
 );
-
-// =====================================================
 // START SERVER
 // =====================================================
 
 /* =========================================================
-   SERVE GEN G PULSE FRONTEND
+   SERVE GEN Z PULSE FRONTEND
 ========================================================= */
 
 const FRONTEND_DIR = path.join(__dirname, "..", "frontend");
@@ -936,7 +1072,7 @@ app.listen(
     PORT,
     () => {
         console.log(
-            `Gen G Pulse backend running at http://localhost:${PORT}`
+            `Gen Z Pulse backend running at http://localhost:${PORT}`
         );
 
         console.log(
@@ -952,4 +1088,13 @@ app.listen(
 );
 
 async function getRssNews(query){const u=`https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=en-IN&gl=IN&ceid=IN:en`;const r=await axios.get(u,{timeout:10000,headers:{"User-Agent":"Mozilla/5.0"}});const items=r.data.match(/<item>[\s\S]*?<\/item>/g)||[];const tag=(x,n)=>{const m=x.match(new RegExp("<"+n+">([\\s\\S]*?)</"+n+">"));return m?m[1].replace("<![CDATA[","").replace("]]>","").replace(/&amp;/g,"&").replace(/&quot;/g,"\"").replace(/&#39;/g,String.fromCharCode(39)).replace(/&lt;/g,"<").replace(/&gt;/g,">").trim():""};const articles=items.slice(0,10).map((x,i)=>{const link=tag(x,"link"),title=tag(x,"title"),description=tag(x,"description"),pub=tag(x,"pubDate"),source=tag(x,"source")||"Google News";return{id:"rss-"+i+"-"+Date.now(),title,description,content:description,url:link,image:"",publishedAt:pub,source:{name:source},category:"General"}}).filter(x=>x.title&&x.url);return{success:true,query,totalArticles:articles.length,articles}}
+
+
+
+
+
+
+
+
+
 
