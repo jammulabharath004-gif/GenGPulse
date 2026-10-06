@@ -1068,11 +1068,16 @@ app.use(express.static(FRONTEND_DIR));
 app.get("/", (req, res) => {
     res.sendFile(path.join(FRONTEND_DIR, "index.html"));
 });
-app.listen(
+// =====================================================
+// START SERVER
+// =====================================================
+
+const server = app.listen(
     PORT,
+    "0.0.0.0",
     () => {
         console.log(
-            `Gen Z Pulse backend running at http://localhost:${PORT}`
+            `Gen Z Pulse backend running on port ${PORT}`
         );
 
         console.log(
@@ -1080,13 +1085,33 @@ app.listen(
         );
 
         console.log(
-            RAZORPAY_KEY_ID
+            RAZORPAY_KEY_ID && RAZORPAY_KEY_SECRET
                 ? "Razorpay: configured"
                 : "Razorpay: NOT configured"
         );
     }
 );
 
+// Initialize Supabase AFTER the server starts.
+// This prevents Render from waiting for database
+// initialization before opening the HTTP port.
+initializeSupabase()
+    .then(() => {
+        console.log("Supabase: connected");
+    })
+    .catch((error) => {
+        console.error(
+            "Supabase initialization failed:",
+            error.message
+        );
+    });
+
+// Graceful shutdown for Render
+process.on("SIGTERM", () => {
+    server.close(() => {
+        process.exit(0);
+    });
+});
 async function getRssNews(query){const u=`https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=en-IN&gl=IN&ceid=IN:en`;const r=await axios.get(u,{timeout:10000,headers:{"User-Agent":"Mozilla/5.0"}});const items=r.data.match(/<item>[\s\S]*?<\/item>/g)||[];const tag=(x,n)=>{const m=x.match(new RegExp("<"+n+">([\\s\\S]*?)</"+n+">"));return m?m[1].replace("<![CDATA[","").replace("]]>","").replace(/&amp;/g,"&").replace(/&quot;/g,"\"").replace(/&#39;/g,String.fromCharCode(39)).replace(/&lt;/g,"<").replace(/&gt;/g,">").trim():""};const articles=items.slice(0,10).map((x,i)=>{const link=tag(x,"link"),title=tag(x,"title"),description=tag(x,"description"),pub=tag(x,"pubDate"),source=tag(x,"source")||"Google News";return{id:"rss-"+i+"-"+Date.now(),title,description,content:description,url:link,image:"",publishedAt:pub,source:{name:source},category:"General"}}).filter(x=>x.title&&x.url);return{success:true,query,totalArticles:articles.length,articles}}
 
 
