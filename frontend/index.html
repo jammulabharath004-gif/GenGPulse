@@ -1,1174 +1,828 @@
 ﻿<!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0"
-    >
-
-    <meta
-        name="description"
-        content="Gen G Pulse - Fast Gen Z news, AI summaries, Gen Z explanations, opportunities, swiping and blindspot feeds."
-    >
-
-    <meta
-        name="theme-color"
-        content="#0b0b14"
-    >
-
-    <title>Gen G Pulse</title>
-
-    <link
-        rel="stylesheet"
-        href="style.css"
-    >
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#fbf8ef">
+  <meta name="description" content="Gen Z Pulse â€” news, context and opportunities for students and young adults.">
+  <title>Gen Z Pulse â€” News, Context &amp; Opportunities</title>
+  <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="#" data-view="home" aria-label="Gen Z Pulse Home">
+        <span class="brand-mark" aria-hidden="true">G</span>
+        <span class="brand-name">Gen Z Pulse</span>
+        <span class="brand-tagline">News, context &amp; opportunities</span>
+      </a>
 
-    <!-- =====================================================
-         APP HEADER
-         ===================================================== -->
+      <nav class="main-nav" aria-label="Primary navigation">
+        <button class="nav-btn active" data-view="home" type="button">News</button>
+        <button class="nav-btn" data-view="flash" type="button">Gen Z Flash</button>
+        <button class="nav-btn" data-view="explain" type="button">Gen Z Explain</button>
+        <button class="nav-btn" data-view="excite" type="button">Excite</button>
+        <button class="nav-btn" data-view="opportunity" type="button">Opportunities</button>
+        <button class="nav-btn" data-view="saved" type="button">Saved</button>
+        <button class="nav-btn" data-view="radar" type="button">Radar</button>
+        <button class="nav-btn" data-view="swiping" type="button">Swiping</button>
+        <button class="nav-btn" data-view="blindspot" type="button">Blindspot</button>
+      </nav>
 
-    <header class="app-header">
+      <div class="account-actions">
+        <button class="header-account-btn" id="signInBtn" type="button">Sign in</button>
+        <button class="header-plus-btn" id="plusBtn" type="button">
+          Gen Z Plus Â· â‚¹49 <span class="plus-dot"></span>
+        </button>
+      </div>
+    </div>
+  </header>
 
-        <div class="header-inner">
+  <main class="main-container">
 
-            <!-- LOGO -->
+    <!-- HOME -->
+    <section class="view active" id="homeView">
 
-            <a
-                href="#"
-                class="brand"
-                data-view-target="home"
-                aria-label="Gen G Pulse Home"
-            >
+      <section class="home-hero">
+        <div class="hero-overlay"></div>
 
-                <div class="brand-icon">
-                    âš¡
-                </div>
+        <img
+          class="hero-image"
+          src="https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&w=1600&q=88"
+          alt="Students and young adults together"
+        >
 
-                <div class="brand-text">
+        <div class="hero-copy">
+          <span class="hero-kicker">YOUR DAILY INFORMATION COMPANION</span>
 
-                    <strong>
-                        Gen G Pulse
-                    </strong>
+          <h1>
+            Stay informed without feeling overwhelmed.
+          </h1>
 
-                    <span>
-                        News for the next generation
-                    </span>
+          <p>
+            Gen Z Pulse turns important news, government updates and opportunities
+            into simple, useful information for students and young adults.
+          </p>
+        </div>
+      </section>
 
-                </div>
+      <section class="home-search-wrap" aria-label="Search Gen Z Pulse">
+        <label class="home-search">
+          <span class="search-symbol" aria-hidden="true">âŒ•</span>
 
-            </a>
+          <input
+            id="homeSearchInput"
+            type="search"
+            placeholder="Search news, topics, or opportunities..."
+            autocomplete="off"
+          >
 
+          <button
+            id="homeSearchBtn"
+            type="button"
+            aria-label="Search"
+          >
+            âŒ•
+          </button>
+        </label>
+      </section>
 
-            <!-- DESKTOP / MOBILE NAVIGATION -->
+      <div class="home-section-heading">
+        <div>
+          <span class="section-eyebrow">âš¡ GEN Z FLASH NEWS</span>
+          <h2>GEN Z FLASH NEWS</h2>
+        </div>
+      </div>
 
-            <nav
-                class="main-nav"
-                aria-label="Main navigation"
-            >
+      <div class="news-grid matrix-grid" id="homeNewsGrid"></div>
 
-                <button
-                    type="button"
-                    class="nav-item active"
-                    data-view="home"
-                >
-                    ðŸ  Home
-                </button>
+    </section>
 
-                <button
-                    type="button"
-                    class="nav-item"
-                    data-view="genz"
-                >
-                    âœ¨ Gen Z
-                </button>
+    <!-- FLASH -->
+    <section class="view" id="flashView" hidden>
 
-                <button
-                    type="button"
-                    class="nav-item"
-                    data-view="flash"
-                >
-                    âš¡ Flash
-                </button>
+      <div class="page-header slim-header">
+        <div>
+          <span class="section-eyebrow">GEN Z FLASH</span>
 
-                <button
-                    type="button"
-                    class="nav-item"
-                    data-view="explain"
-                >
-                    ðŸ¤– Gen Z Explain
-                </button>
+          <h1>
+            Quick updates. No endless scrolling.
+          </h1>
 
-                <button
-                    type="button"
-                    class="nav-item"
-                    data-view="opportunities"
-                >
-                    ðŸŽ¯ Opportunities
-                </button>
+          <p>
+            Browse the full three-column story matrix with topic filters and search.
+          </p>
+        </div>
 
-                <button
-                    type="button"
-                    class="nav-item"
-                    data-view="saved"
-                >
-                    â­ Saved
-                </button>
+        <button
+          class="secondary-btn"
+          id="refreshFlashBtn"
+          type="button"
+        >
+          Refresh feed
+        </button>
+      </div>
 
-                <button
-                    type="button"
-                    class="nav-item"
-                    data-view="radar"
-                >
-                    ðŸ“¡ Radar
-                </button>
+      <div class="toolbar toolbar-wide">
 
-                <!-- NEW -->
+        <label class="search-box">
+          <span>âŒ•</span>
 
-                <button
-                    type="button"
-                    class="nav-item new-nav-item"
-                    data-view="swiping"
-                >
-                    ðŸ‘† Swiping
-                    <span class="nav-new-badge">
-                        NEW
-                    </span>
-                </button>
+          <input
+            id="flashSearchInput"
+            type="search"
+            placeholder="Search today's pulse..."
+            autocomplete="off"
+          >
+        </label>
 
-                <!-- NEW -->
+        <div
+          class="filter-strip"
+          id="flashFilterBar"
+        ></div>
 
-                <button
-                    type="button"
-                    class="nav-item new-nav-item"
-                    data-view="blindspot"
-                >
-                    ðŸ‘€ Blindspot Feed
-                    <span class="nav-new-badge">
-                        NEW
-                    </span>
-                </button>
+      </div>
 
-            </nav>
-            <!-- ACCOUNT ACTIONS -->
+      <div
+        class="news-grid matrix-grid"
+        id="flashNewsGrid"
+      ></div>
 
-            <div class="account-actions">
+    </section>
 
-                <button
-                    type="button"
-                    class="header-account-btn"
-                    id="headerSignInBtn">
-                    Sign In
-                </button>
+    <!-- EXPLAIN -->
+    <section class="view" id="explainView" hidden>
 
-                <button
-                    type="button"
-                    class="header-plus-btn"
-                    id="headerPlusBtn"
-                >
-                    â‚¹49 Plus
-                </button>
+      <div class="page-header slim-header">
+        <div>
 
-                <button
-                    type="button"
-                    class="header-profile-btn"
-                    id="headerProfileBtn"
-                    aria-label="Profile"
-                >
-                    ðŸ‘¤
-                </button>
+          <span class="section-eyebrow">
+            GEN Z EXPLAIN
+          </span>
 
-            </div>
+          <h1>
+            Know what happened â€” and why it matters.
+          </h1>
+
+          <p>
+            Every story keeps AI Summary, AI Explanation,
+            direct article/source and Save options.
+          </p>
+
+        </div>
+      </div>
+
+      <div class="explain-banner">
+
+        <div class="explain-icon">
+          ?
+        </div>
+
+        <div>
+
+          <strong>
+            Context before conclusions
+          </strong>
+
+          <p>
+            Use AI Summary for the quick version and
+            AI Explanation when you want the story in simple language.
+          </p>
 
         </div>
 
-    </header>
+      </div>
 
+      <div
+        class="news-grid matrix-grid"
+        id="explainGrid"
+      ></div>
 
-    <!-- =====================================================
-         MAIN APPLICATION
-         ===================================================== -->
+    </section>
 
-    <main class="app-main">
+    <!-- EXCITE -->
+    <section class="view" id="exciteView" hidden>
 
-        <!-- =================================================
-             HOME
-             ================================================= -->
+      <div class="excite-shell">
 
-        <section
-            id="homeView"
-            class="app-view active"
-        >
+        <div class="excite-main">
 
-            <div class="hero-section">
+          <section
+            class="excite-hero"
+            aria-labelledby="exciteHeroTitle"
+          >
 
-                <div class="hero-content">
+            <div class="excite-hero-copy">
 
-                    <div class="hero-badge">
-                        âš¡ REAL-TIME GEN G NEWS
-                    </div>
+              <span class="excite-pill">
+                <span></span>
+                EXCITE
+              </span>
 
-                    <h1>
-                        The internet,
-                        <span>
-                            but Gen Z gets it.
-                        </span>
-                    </h1>
+              <h1 id="exciteHeroTitle">
+                The future is happening <span>now.</span>
+              </h1>
 
-                    <p>
-                        Fast news. AI summaries.
-                        Gen Z explanations.
-                        Opportunities you can actually use.
-                    </p>
+              <p>
+                Discover stories, innovations and ideas
+                that make Gen G excited about tomorrow.
+              </p>
 
-                    <div class="hero-buttons">
+              <div class="excite-topic-row">
 
-                        <button
-                            type="button"
-                            class="primary-btn"
-                            data-view-target="flash"
-                        >
-                            âš¡ Explore Flash
-                        </button>
-
-                        <button
-                            type="button"
-                            class="secondary-btn"
-                            data-view-target="swiping"
-                        >
-                            ðŸ‘† Start Swiping
-                        </button>
-
-                    </div>
-
-                </div>
-
-                <div class="hero-visual">
-
-                    <div class="pulse-orbit orbit-one"></div>
-                    <div class="pulse-orbit orbit-two"></div>
-                    <div class="pulse-orbit orbit-three"></div>
-
-                    <div class="hero-center">
-
-                        <span>
-                            âš¡
-                        </span>
-
-                        <strong>
-                            PULSE
-                        </strong>
-
-                        <small>
-                            LIVE
-                        </small>
-
-                    </div>
-
-                </div>
-
-            </div>
-
-
-            <div class="stats-grid">
-
-                <div class="stat-card">
-
-                    <div class="stat-icon">
-                        ðŸ“°
-                    </div>
-
-                    <strong>
-                        0
-                    </strong>
-
-                    <span>
-                        Live stories
-                    </span>
-
-                </div>
-
-
-                <div class="stat-card">
-
-                    <div class="stat-icon">
-                        â­
-                    </div>
-
-                    <strong>
-                        0
-                    </strong>
-
-                    <span>
-                        Saved
-                    </span>
-
-                </div>
-
-
-                <div class="stat-card">
-
-                    <div class="stat-icon">
-                        ðŸ‘€
-                    </div>
-
-                    <strong>
-                        0
-                    </strong>
-
-                    <span>
-                        Blindspot topics
-                    </span>
-
-                </div>
-
-
-                <div class="stat-card">
-
-                    <div class="stat-icon">
-                        ðŸ¤–
-                    </div>
-
-                    <strong>
-                        AI
-                    </strong>
-
-                    <span>
-                        Powered explainers
-                    </span>
-
-                </div>
-
-            </div>
-
-
-            <section class="content-section">
-
-                <div class="section-heading">
-
-                    <div>
-
-                        <span class="section-kicker">
-                            TRENDING NOW
-                        </span>
-
-                        <h2>
-                            What's happening?
-                        </h2>
-
-                    </div>
-
-                    <button
-                        type="button"
-                        class="small-btn"
-                        data-view-target="flash"
-                    >
-                        See all â†’
-                    </button>
-
-                </div>
-
-
-                <div class="news-grid" class="news-grid">`r`n`r`n                <div class="empty-state">
-
-                        <div>
-                            ðŸ“°
-                        </div>
-
-                        <h3>
-                            Loading your pulse...
-                        </h3>
-
-                        <p>
-                            Fetching the latest stories.
-                        </p>
-
-                    </div>
-
-                </div>
-
-            </section>
-
-        </section>
-
-
-        <!-- =================================================
-             GEN Z
-             ================================================= -->
-
-        <section
-            id="genzView"
-            class="app-view"
-            hidden
-        >
-
-            <section class="page-header">
-
-                <span class="section-kicker">
-                    âœ¨ GEN Z
-                </span>
-
-                <h1>
-                    News that matters to your generation
-                </h1>
-
-                <p>
-                    Technology, education, careers,
-                    startups, science and more.
-                </p>
-
-            </section>
-
-
-            <div class="news-grid" class="news-grid">`r`n`r`n                <div class="empty-state">
-
-                    <div>
-                        âœ¨
-                    </div>
-
-                    <h3>
-                        Loading Gen Z stories...
-                    </h3>
-
-                </div>
-
-            </div>
-
-        </section>
-
-
-        <!-- =================================================
-             FLASH
-             ================================================= -->
-
-        <section
-            id="flashView"
-            class="app-view"
-            hidden
-        >
-
-            <section class="page-header">
-
-                <div class="header-row">
-
-                    <div>
-
-                        <span class="section-kicker">
-                            âš¡ FLASH
-                        </span>
-
-                        <h1>
-                            Fast. Fresh. No fluff.
-                        </h1>
-
-                        <p>
-                            Live articles from your news pipeline.
-                        </p>
-
-                    </div>
-
-
-                    <button
-                        type="button"
-                        class="primary-btn"
-                        id="refreshNewsBtn"
-                    >
-                        â†» Refresh News
-                    </button>
-
-                </div>
-
-
-                <div
-                    class="news-status"
-                    data-news-status
+                <button
+                  class="excite-topic"
+                  data-excite-topic="Technology"
+                  type="button"
                 >
-                    Loading live news...
-                </div>
+                  Technology
+                </button>
 
-            </section>
+                <button
+                  class="excite-topic"
+                  data-excite-topic="Science"
+                  type="button"
+                >
+                  Science
+                </button>
 
+                <button
+                  class="excite-topic"
+                  data-excite-topic="Startups"
+                  type="button"
+                >
+                  Startups
+                </button>
 
-            <div id="flashNewsGrid" class="news-grid">`r`n`r`n                <div class="empty-state">
+                <button
+                  class="excite-topic"
+                  data-excite-topic="Environment"
+                  type="button"
+                >
+                  Environment
+                </button>
 
-                    <div>
-                        âš¡
-                    </div>
-
-                    <h3>
-                        Loading flash news...
-                    </h3>
-
-                </div>
-
-            </div>
-
-        </section>
-
-
-        <!-- =================================================
-             GEN Z EXPLAIN
-             ================================================= -->
-
-        <section
-            id="explainView"
-            class="app-view"
-            hidden
-        >
-
-            <section class="page-header">
-
-                <span class="section-kicker">
-                    ðŸ¤– GEN Z EXPLAIN
-                </span>
-
-                <h1>
-                    No complicated news language.
-                </h1>
-
-                <p>
-                    Pick a story and get a simple,
-                    Gen Z-friendly explanation.
-                </p>
-
-            </section>
-
-
-            <div class="explain-intro">
-
-                <div class="explain-intro-icon">
-                    ðŸ¤–
-                </div>
-
-                <div>
-
-                    <h2>
-                        What does this actually mean?
-                    </h2>
-
-                    <p>
-                        Select any story below.
-                        Gen G Pulse will break down
-                        the important parts in simple language.
-                    </p>
-
-                </div>
+              </div>
 
             </div>
-
-
-            <div class="news-grid" class="news-grid">`r`n`r`n                <div class="empty-state">
-
-                    <div>
-                        ðŸ¤–
-                    </div>
-
-                    <h3>
-                        Choose a story to explain
-                    </h3>
-
-                </div>
-
-            </div>
-
-        </section>
-
-
-        <!-- =================================================
-             OPPORTUNITIES
-             ================================================= -->
-
-        <section
-            id="opportunitiesView"
-            class="app-view"
-            hidden
-        >
-
-            <section class="page-header">
-
-                <span class="section-kicker">
-                    ðŸŽ¯ OPPORTUNITIES
-                </span>
-
-                <h1>
-                    Don't just read. Do something.
-                </h1>
-
-                <p>
-                    Scholarships, campus opportunities
-                    and student events.
-                </p>
-
-            </section>
-
-
-            <div class="opportunity-notice">
-
-                <span class="notice-icon">
-                    ðŸ”Ž
-                </span>
-
-                <div>
-
-                    <strong>
-                        Always verify eligibility and deadlines
-                    </strong>
-
-                    <p>
-                        Check the current details on the
-                        destination website before applying
-                        or attending.
-                    </p>
-
-                </div>
-
-            </div>
-
-
-            <div class="opportunities-grid">
-
-                <!-- SCHOLARSHIP -->
-
-                <article class="opportunity-card">
-
-                    <div class="opportunity-icon">
-                        ðŸŽ“
-                    </div>
-
-                    <span class="opportunity-type">
-                        Scholarship
-                    </span>
-
-                    <h3>
-                        National Scholarship Portal
-                    </h3>
-
-                    <p>
-                        Explore government scholarship
-                        opportunities for eligible students
-                        through the official National
-                        Scholarship Portal.
-                    </p>
-
-                    <div class="opportunity-footer">
-
-                        <span>
-                            Scholarship
-                        </span>
-
-                        <button
-                            type="button"
-                            class="opportunity-btn"
-                            data-opportunity-url="https://scholarships.gov.in/"
-                        >
-                            Apply â†’
-                        </button>
-
-                    </div>
-
-                </article>
-
-
-                <!-- CAMPUS -->
-
-                <article class="opportunity-card">
-
-                    <div class="opportunity-icon">
-                        ðŸ’¼
-                    </div>
-
-                    <span class="opportunity-type">
-                        Campus opportunity
-                    </span>
-
-                    <h3>
-                        AICTE Student & Internship Opportunities
-                    </h3>
-
-                    <p>
-                        Explore education, internship and
-                        student-development opportunities
-                        connected with India's technical
-                        education ecosystem.
-                    </p>
-
-                    <div class="opportunity-footer">
-
-                        <span>
-                            Campus
-                        </span>
-
-                        <button
-                            type="button"
-                            class="opportunity-btn"
-                            data-opportunity-url="https://www.aicte-india.org/"
-                        >
-                            Connect â†’
-                        </button>
-
-                    </div>
-
-                </article>
-
-
-                <!-- EVENT -->
-
-                <article class="opportunity-card">
-
-                    <div class="opportunity-icon">
-                        ðŸ“…
-                    </div>
-
-                    <span class="opportunity-type">
-                        Student event
-                    </span>
-
-                    <h3>
-                        Student Events & Competitions
-                    </h3>
-
-                    <p>
-                        Discover hackathons, competitions,
-                        internships and student events
-                        from an Indian student opportunity
-                        platform.
-                    </p>
-
-                    <div class="opportunity-footer">
-
-                        <span>
-                            Event
-                        </span>
-
-                        <button
-                            type="button"
-                            class="opportunity-btn"
-                            data-opportunity-url="https://unstop.com/"
-                        >
-                            Attend â†’
-                        </button>
-
-                    </div>
-
-                </article>
-
-
-                <!-- INNOVATION -->
-
-                <article class="opportunity-card">
-
-                    <div class="opportunity-icon">
-                        ðŸš€
-                    </div>
-
-                    <span class="opportunity-type">
-                        Innovation
-                    </span>
-
-                    <h3>
-                        Student Innovation Opportunities
-                    </h3>
-
-                    <p>
-                        Explore innovation, entrepreneurship
-                        and startup-related opportunities
-                        for students and young innovators.
-                    </p>
-
-                    <div class="opportunity-footer">
-
-                        <span>
-                            Innovation
-                        </span>
-
-                        <button
-                            type="button"
-                            class="opportunity-btn"
-                            data-opportunity-url="https://www.startupindia.gov.in/"
-                        >
-                            Connect â†’
-                        </button>
-
-                    </div>
-
-                </article>
-
-            </div>
-
-        </section>
-
-
-        <!-- =================================================
-             SAVED
-             ================================================= -->
-
-        <section
-            id="savedView"
-            class="app-view"
-            hidden
-        >
-
-            <section class="page-header">
-
-                <span class="section-kicker">
-                    â­ SAVED
-                </span>
-
-                <h1>
-                    Your saved stories
-                </h1>
-
-                <p>
-                    Stories you don't want to lose.
-                </p>
-
-            </section>
-
-
-            <div class="news-grid">
-
-                <div class="empty-state large-empty">
-
-                    <div>
-                        â­
-                    </div>
-
-                    <h3>
-                        Nothing saved yet
-                    </h3>
-
-                    <p>
-                        Tap â˜† Save on any story
-                        to keep it here.
-                    </p>
-
-                    <button
-                        type="button"
-                        class="primary-btn"
-                        data-view-target="flash"
-                    >
-                        Explore News
-                    </button>
-
-                </div>
-
-            </div>
-
-        </section>
-
-
-        <!-- =================================================
-             RADAR
-             ================================================= -->
-
-        <section
-            id="radarView"
-            class="app-view"
-            hidden
-        >
-
-            <section class="page-header">
-
-                <span class="section-kicker">
-                    ðŸ“¡ RADAR
-                </span>
-
-                <h1>
-                    Control your news radar.
-                </h1>
-
-                <p>
-                    Mark topics you are not interested in.
-                    Those topics become your Blindspot Feed.
-                </p>
-
-            </section>
-
-
-            <div class="radar-panel">
-
-                <div class="radar-panel-header">
-
-                    <div>
-
-                        <h2>
-                            Your topic preferences
-                        </h2>
-
-                        <p>
-                            Tap a category to toggle
-                            "Not interested".
-                        </p>
-
-                    </div>
-
-                    <span class="radar-count">
-                        0 not interested
-                    </span>
-
-                </div>
-
-
-                <div class="category-chips">
-
-                    <!-- JavaScript fills these -->
-
-                </div>
-
-
-                <div class="blindspot-preview">
-
-                    <div>
-
-                        <strong>
-                            ðŸ‘€ Blindspot Feed
-                        </strong>
-
-                        <p>
-                            Topics you mark as not interested
-                            will appear here.
-                        </p>
-
-                    </div>
-
-                    <button
-                        type="button"
-                        class="primary-btn"
-                        data-view-target="blindspot"
-                    >
-                        Open Blindspot Feed â†’
-                    </button>
-
-                </div>
-
-            </div>
-
-        </section>
-
-
-        <!-- =================================================
-             SWIPING
-             ================================================= -->
-
-        <section
-            id="swipingView"
-            class="app-view"
-            hidden
-        >
-
-            <section class="page-header swipe-page-header">
-
-                <div>
-
-                    <span class="section-kicker">
-                        ðŸ‘† SWIPING
-                    </span>
-
-                    <h1>
-                        Your news, one swipe at a time.
-                    </h1>
-
-                    <p>
-                        Swipe through stories like a social feed.
-                        Discover, save, explain or move on.
-                    </p>
-
-                </div>
-
-                <div class="swipe-counter">
-                    0 / 0
-                </div>
-
-            </section>
-
-
-            <div class="swipe-instructions">
-
-                <span>
-                    â† Pass
-                </span>
-
-                <strong>
-                    Drag the card
-                </strong>
-
-                <span>
-                    Next â†’
-                </span>
-
-            </div>
-
 
             <div
-                class="swipe-stage"
-                id="swipeStage"
+              class="excite-hero-art"
+              aria-hidden="true"
             >
 
-                <div class="empty-state">
+              <div class="excite-stars"></div>
+              <div class="excite-moon"></div>
 
-                    <div>
-                        ðŸ‘†
-                    </div>
+              <div class="excite-city city-back"></div>
+              <div class="excite-city city-mid"></div>
+              <div class="excite-city city-front"></div>
 
-                    <h3>
-                        Loading swipe feed...
-                    </h3>
-
-                    <p>
-                        Your personalized stories
-                        will appear here.
-                    </p>
-
-                </div>
+              <div class="excite-person-head"></div>
+              <div class="excite-person-body"></div>
 
             </div>
 
+          </section>
 
-            <div class="swipe-hint">
+          <div class="excite-section-title">
 
-                ðŸ’¡ Tip: Swipe left or right,
-                or use the buttons below the card.
+            <div>
+              <span class="section-eyebrow">
+                DISCOVER
+              </span>
 
+              <h2>
+                Today's exciting stories
+              </h2>
             </div>
 
-        </section>
+          </div>
 
-
-        <!-- =================================================
-             BLINDSPOT FEED
-             ================================================= -->
-
-        <section
-            id="blindspotView"
-            class="app-view"
-            hidden
-        >
-
-            <section class="page-header blindspot-header">
-
-                <div>
-
-                    <span class="section-kicker">
-                        ðŸ‘€ BLINDSPOT FEED
-                    </span>
-
-                    <h1>
-                        Stuff outside your usual bubble.
-                    </h1>
-
-                    <p>
-                        This feed intentionally surfaces
-                        topics you've marked as
-                        <strong>
-                            not interested
-                        </strong>.
-                    </p>
-
-                </div>
-
-                <div class="blindspot-count">
-                    0 stories
-                </div>
-
-            </section>
-
-
-            <div class="blindspot-category-bar">
-
-                <span>
-                    Your blindspot topics:
-                </span>
-
-                <span class="blindspot-tag">
-                    ðŸ‘€ Choose topics in Radar
-                </span>
-
-            </div>
-
-
-            <div class="news-grid" class="news-grid">`r`n`r`n                <div class="empty-state">
-
-                    <div>
-                        ðŸ‘€
-                    </div>
-
-                    <h3>
-                        Your blindspot is waiting
-                    </h3>
-
-                    <p>
-                        Go to Radar and mark topics
-                        as "Not interested".
-                    </p>
-
-                    <button
-                        type="button"
-                        class="primary-btn"
-                        data-view-target="radar"
-                    >
-                        Open Radar
-                    </button>
-
-                </div>
-
-            </div>
-
-        </section>
-
-    </main>
-
-
-    <!-- =====================================================
-         FOOTER
-         ===================================================== -->
-
-    <footer class="app-footer">
-
-        <div class="footer-inner">
-
-            <div class="footer-brand">
-
-                <span>
-                    âš¡
-                </span>
-
-                <strong>
-                    Gen G Pulse
-                </strong>
-
-            </div>
-
-            <p>
-                News â€¢ Explain â€¢ Discover â€¢ Act
-            </p>
-
-            <span class="footer-copy">
-                Â© 2026 Gen G Pulse
-            </span>
+          <div
+            class="news-grid excite-news-grid"
+            id="exciteStoryGrid"
+          ></div>
 
         </div>
 
-    </footer>
+        <aside class="excite-side">
 
+          <section class="excite-panel">
 
-    <!-- =====================================================
-         JAVASCRIPT
-         ===================================================== -->
+            <div class="excite-panel-heading">
+              <h3>
+                Trending excite topics
+              </h3>
 
-    <script
-        src="script.js"
-        defer
-    ></script>
+              <span class="hot-badge">
+                HOT
+              </span>
+            </div>
 
-<div id="aiModal" class="hidden" style="position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.72);display:flex;align-items:center;justify-content:center;padding:20px;"><div style="width:min(720px,100%);max-height:85vh;overflow:auto;background:#11111d;border:1px solid rgba(255,255,255,.14);border-radius:22px;padding:24px;box-shadow:0 24px 80px rgba(0,0,0,.45);color:#fff;"><div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;"><span id="modalIcon" style="font-size:28px;">ðŸ¤–</span><span id="modalLabel" style="font-size:11px;font-weight:800;letter-spacing:1.2px;color:#a9a1ff;">AI</span><button id="closeModal" type="button" aria-label="Close" style="margin-left:auto;width:38px;height:38px;border:0;border-radius:10px;background:rgba(255,255,255,.08);color:#fff;font-size:20px;cursor:pointer;">Ã—</button></div><h2 id="modalTitle" style="margin:0 0 16px;font-size:28px;">Quick Summary</h2><div id="modalContent" style="white-space:pre-wrap;line-height:1.7;color:rgba(255,255,255,.86);font-size:15px;">Loading...</div></div></div></body>
+            <div class="excite-trends">
+
+              <button
+                data-excite-topic="Technology"
+                type="button"
+              >
+                <b class="rank rank-1">1</b>
+
+                <span>
+                  <strong>AI &amp; Innovation</strong>
+                  <small>Breakthroughs, tools and what's next</small>
+                </span>
+
+                <i>â†’</i>
+              </button>
+
+              <button
+                data-excite-topic="Science"
+                type="button"
+              >
+                <b class="rank rank-2">2</b>
+
+                <span>
+                  <strong>Space &amp; Science</strong>
+                  <small>Discoveries, missions and beyond</small>
+                </span>
+
+                <i>â†’</i>
+              </button>
+
+              <button
+                data-excite-topic="Environment"
+                type="button"
+              >
+                <b class="rank rank-3">3</b>
+
+                <span>
+                  <strong>Green Future</strong>
+                  <small>Clean technology and climate ideas</small>
+                </span>
+
+                <i>â†’</i>
+              </button>
+
+              <button
+                data-excite-topic="Startups"
+                type="button"
+              >
+                <b class="rank rank-4">4</b>
+
+                <span>
+                  <strong>Startups &amp; Business</strong>
+                  <small>Young founders and big ideas</small>
+                </span>
+
+                <i>â†’</i>
+              </button>
+
+              <button
+                data-excite-topic="Gaming"
+                type="button"
+              >
+                <b class="rank rank-5">5</b>
+
+                <span>
+                  <strong>Gaming &amp; Creators</strong>
+                  <small>Games, tech and digital creativity</small>
+                </span>
+
+                <i>â†’</i>
+              </button>
+
+            </div>
+
+          </section>
+
+          <section class="excite-panel excite-gradient-panel">
+
+            <div class="gradient-icon">
+              âœ¦
+            </div>
+
+            <h3>
+              Why it's exciting?
+            </h3>
+
+            <div class="excite-checks">
+              <span>Real innovations, not just noise</span>
+              <span>Stories that inspire action</span>
+              <span>Ideas worth exploring</span>
+              <span>A better view of tomorrow</span>
+            </div>
+
+            <button
+              class="excite-cta"
+              data-view="flash"
+              type="button"
+            >
+              Explore more stories â†’
+            </button>
+
+          </section>
+
+        </aside>
+
+      </div>
+
+    </section>
+
+    <!-- OPPORTUNITIES -->
+    <section class="view" id="opportunityView" hidden>
+
+      <div class="page-header slim-header">
+
+        <div>
+
+          <span class="section-eyebrow">
+            OPPORTUNITIES
+          </span>
+
+          <h1>
+            Information becomes useful when you can act on it.
+          </h1>
+
+          <p>
+            Keep the action simple: Apply, Connect or Attend.
+          </p>
+
+        </div>
+
+      </div>
+
+      <div
+        class="opportunity-grid"
+        id="opportunityGrid"
+      ></div>
+
+      <div class="opportunity-note">
+
+        <span>i</span>
+
+        <div>
+
+          <strong>
+            Why these actions?
+          </strong>
+
+          <p>
+            Gen Z Pulse is designed to move from
+            news â†’ explanation â†’ relevance â†’ action.
+          </p>
+
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- SAVED -->
+    <section class="view" id="savedView" hidden>
+
+      <div class="page-header slim-header">
+
+        <div>
+
+          <span class="section-eyebrow">
+            YOUR LIBRARY
+          </span>
+
+          <h1>
+            Saved for later.
+          </h1>
+
+          <p>
+            Keep the stories worth coming back to.
+          </p>
+
+        </div>
+
+      </div>
+
+      <div
+        class="news-grid matrix-grid"
+        id="savedGrid"
+      ></div>
+
+    </section>
+
+    <!-- RADAR -->
+    <section class="view" id="radarView" hidden>
+
+      <div class="page-header slim-header">
+
+        <div>
+
+          <span class="section-eyebrow">
+            RADAR &amp; RELEVANCE
+          </span>
+
+          <h1>
+            Choose what you want to notice.
+          </h1>
+
+          <p>
+            Your selected topics power the Blindspot feed.
+          </p>
+
+        </div>
+
+        <button
+          class="secondary-btn"
+          id="resetRadarBtn"
+          type="button"
+        >
+          Reset
+        </button>
+
+      </div>
+
+      <div class="radar-card">
+
+        <div class="radar-card-top">
+
+          <div>
+
+            <h2>
+              Your topics
+            </h2>
+
+            <p>
+              Pick categories you usually miss.
+              They'll appear in Blindspot.
+            </p>
+
+          </div>
+
+          <span class="radar-status">
+            Personalized
+          </span>
+
+        </div>
+
+        <div
+          class="interest-controls"
+          id="interestControls"
+        ></div>
+
+      </div>
+
+      <div class="section-heading compact">
+
+        <div>
+
+          <span class="section-eyebrow">
+            RADAR STORIES
+          </span>
+
+          <h2>
+            Stories outside your usual mix
+          </h2>
+
+        </div>
+
+      </div>
+
+      <div
+        class="news-grid matrix-grid"
+        id="radarGrid"
+      ></div>
+
+    </section>
+
+    <!-- SWIPING -->
+    <section
+      class="view swipe-view"
+      id="swipingView"
+      hidden
+    >
+
+      <div class="page-header swipe-header">
+
+        <div>
+
+          <span class="section-eyebrow">
+            SWIPING
+          </span>
+
+          <h1>
+            One story at a time.
+          </h1>
+
+          <p>
+            Swipe left/right or use the controls.
+            Action tools stay on every card.
+          </p>
+
+        </div>
+
+        <span
+          class="swipe-counter"
+          id="swipeCounter"
+        >
+          0 / 0
+        </span>
+
+      </div>
+
+      <div class="swipe-layout">
+
+        <div
+          class="swipe-deck"
+          id="swipeStage"
+        ></div>
+
+        <div class="swipe-controls">
+
+          <button
+            class="round-btn"
+            id="swipePrevious"
+            type="button"
+          >
+            â†
+          </button>
+
+          <button
+            class="round-btn main-round"
+            data-view="home"
+            type="button"
+          >
+            G
+          </button>
+
+          <button
+            class="round-btn"
+            id="swipeNext"
+            type="button"
+          >
+            â†’
+          </button>
+
+        </div>
+
+        <p class="swipe-hint">
+          Tip: drag the card horizontally to move through your feed.
+        </p>
+
+      </div>
+
+    </section>
+
+    <!-- BLINDSPOT -->
+    <section
+      class="view swipe-view"
+      id="blindspotView"
+      hidden
+    >
+
+      <div class="page-header swipe-header">
+
+        <div>
+
+          <span class="section-eyebrow">
+            BLINDSPOT FEED
+          </span>
+
+          <h1>
+            Stories outside your usual bubble.
+          </h1>
+
+          <p>
+            Useful topics you may not normally follow.
+          </p>
+
+        </div>
+
+        <span class="blindspot-badge">
+          DISCOVER
+        </span>
+
+      </div>
+
+      <div class="blindspot-info">
+
+        <strong>
+          Why Blindspot?
+        </strong>
+
+        <span>
+          These topics help reduce information bubbles and broaden what you see.
+        </span>
+
+      </div>
+
+      <div class="swipe-layout">
+
+        <div
+          class="swipe-deck"
+          id="blindspotDeck"
+        ></div>
+
+        <div class="swipe-controls">
+
+          <button
+            class="round-btn"
+            id="blindspotPrevious"
+            type="button"
+          >
+            â†
+          </button>
+
+          <button
+            class="round-btn main-round"
+            data-view="radar"
+            type="button"
+          >
+            âŒ
+          </button>
+
+          <button
+            class="round-btn"
+            id="blindspotNext"
+            type="button"
+          >
+            â†’
+          </button>
+
+        </div>
+
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- AI / ACCOUNT MODAL -->
+  <div
+    class="modal hidden"
+    id="aiModal"
+    aria-hidden="true"
+  >
+
+    <div
+      class="modal-overlay"
+      id="modalOverlay"
+    ></div>
+
+    <div
+      class="modal-box"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modalTitle"
+    >
+
+      <button
+        class="modal-close"
+        id="closeModal"
+        type="button"
+        aria-label="Close"
+      >
+        Ã—
+      </button>
+
+      <div
+        class="modal-icon"
+        id="modalIcon"
+      >
+        âœ¦
+      </div>
+
+      <div
+        class="section-eyebrow"
+        id="modalLabel"
+      >
+        GEN Z PULSE
+      </div>
+
+      <h2 id="modalTitle">
+        Quick Summary
+      </h2>
+
+      <div
+        class="modal-content"
+        id="modalContent"
+      ></div>
+
+    </div>
+
+  </div>
+
+  <div
+    class="toast"
+    id="toast"
+  ></div>
+
+  <footer>
+    <div>
+      Gen Z Pulse Â· News â†’ Explanation â†’ Relevance â†’ Action
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
 </html>
-
-
-
 
 
 

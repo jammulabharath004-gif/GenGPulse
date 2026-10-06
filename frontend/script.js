@@ -1,1198 +1,1523 @@
 ﻿/* =========================================================
-   GEN G PULSE
-   COMPLETE FRONTEND JAVASCRIPT
-========================================================= */
-
-
-/* =========================================================
-   CONFIGURATION
+   GEN Z PULSE â€” FRONTEND
+   Complete frontend:
+   - News
+   - Topic search
+   - AI summary / explanation
+   - Save stories
+   - Cloud saved stories
+   - Radar cloud sync
+   - Sign in / Sign up
+   - Gen Z Plus
+   - Swiping
+   - Blindspot
 ========================================================= */
 
 const API_BASE = window.location.origin;
 
-/*
-   IMPORTANT:
-   Your backend returns:
-
-   {
-       success: true,
-       query: "...",
-       totalArticles: 123,
-       articles: [...]
-   }
-
-   Therefore we read payload.articles.
-*/
-
 const NEWS_API = `${API_BASE}/api/news`;
+const AI_ANALYZE_API = `${API_BASE}/api/analyze-news`;
 
+const SIGNUP_API = `${API_BASE}/api/signup`;
+const SIGNIN_API = `${API_BASE}/api/signin`;
 
-/*
-   These endpoints are optional.
+const SAVED_API = `${API_BASE}/api/saved`;
+const SAVE_STORY_API = `${API_BASE}/api/save-story`;
+const INTERESTS_API = `${API_BASE}/api/interests`;
 
-   If your backend later provides them, the frontend
-   can use them automatically.
-
-   The frontend NEVER contains your Gemini API key.
-*/
-
-const AI_ENDPOINTS = {
-    summary: `${API_BASE}/api/ai-summary`,
-    explain: `${API_BASE}/api/ai-explain`
-};
-
-
-/* =========================================================
-   STATE
-========================================================= */
-
-function loadCurrentUser() {
-
-    try {
-
-        const user = JSON.parse(
-            localStorage.getItem("genGPulseUser") || "null"
-        );
-
-        return user && user.id
-            ? user
-            : null;
-
-    } catch {
-
-        return null;
-
-    }
-
-}
-
-
-function saveCurrentUser(user) {
-
-    if (user) {
-
-        localStorage.setItem(
-            "genGPulseUser",
-            JSON.stringify(user)
-        );
-
-    } else {
-
-        localStorage.removeItem(
-            "genGPulseUser"
-        );
-
-    }
-
-}
+const PLUS_ORDER_API = `${API_BASE}/api/create-plus-order`;
+const PLUS_VERIFY_API = `${API_BASE}/api/verify-plus-payment`;
 
 const state = {
+  user: loadCurrentUser(),
 
-    currentUser: loadCurrentUser(),
+  articles: [],
 
-    articles: [],
+  savedIds: loadSavedIds(),
 
-    savedIds: loadSavedIds(),
+  savedArticles: loadSavedArticles(),
 
-    /*
-       Topics selected here appear in Blindspot Feed.
-    */
-    blindspotCategories: loadBlindspotCategories(),
+  blindspotCategories:
+    loadBlindspotCategories(),
 
-    swipingIndex: 0,
+  swipingIndex: 0,
 
-    blindspotIndex: 0,
+  blindspotIndex: 0,
 
-    currentView: "home",
+  currentView: "home",
 
-    loading: false
+  loading: false,
+
+  flashCategory: "All",
+
+  flashSearch: "",
+
+  homeSearch: ""
 };
 
 
 /* =========================================================
-   FALLBACK DATA
+   CATEGORIES
 ========================================================= */
 
-/*
-   These are only used if the API temporarily returns
-   no articles.
+const availableCategories = [
+  "Technology",
+  "Science",
+  "Career",
+  "Startups",
+  "Finance",
+  "Education",
+  "Sports",
+  "Gaming",
+  "Entertainment",
+  "Fashion",
+  "Health",
+  "Environment"
+];
 
-   This means your website won't become completely empty.
-*/
 
-function hoursAgo(hours) {
+/* =========================================================
+   IMAGES
+========================================================= */
 
-    return new Date(
-        Date.now() - hours * 60 * 60 * 1000
-    ).toISOString();
-}
+const fallbackImages = {
 
+  technology:
+    "https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=1000&q=80",
+
+  science:
+    "https://images.unsplash.com/photo-1532094349884-543bc11b234d?auto=format&fit=crop&w=1000&q=80",
+
+  sports:
+    "https://images.unsplash.com/photo-1461896836934-ffe607ba8211?auto=format&fit=crop&w=1000&q=80",
+
+  gaming:
+    "https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=1000&q=80",
+
+  entertainment:
+    "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&w=1000&q=80",
+
+  finance:
+    "https://images.unsplash.com/photo-1559526324-593bc073d938?auto=format&fit=crop&w=1000&q=80",
+
+  career:
+    "https://images.unsplash.com/photo-1521737711867-e3b97375f902?auto=format&fit=crop&w=1000&q=80",
+
+  education:
+    "https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=1000&q=80",
+
+  startups:
+    "https://images.unsplash.com/photo-1556761175-4b46a572b786?auto=format&fit=crop&w=1000&q=80",
+
+  environment:
+    "https://images.unsplash.com/photo-1472141521881-95d0e87e2e39?auto=format&fit=crop&w=1000&q=80",
+
+  health:
+    "https://images.unsplash.com/photo-1505751172876-fa1923c5c528?auto=format&fit=crop&w=1000&q=80",
+
+  general:
+    "https://images.unsplash.com/photo-1504711434969-e33886168f5c?auto=format&fit=crop&w=1000&q=80"
+};
+
+
+/* =========================================================
+   FALLBACK ARTICLES
+========================================================= */
 
 const fallbackArticles = [
 
-    {
-        id: "fallback-ai-student",
-        title: "AI is becoming a bigger part of student projects",
-        description:
-            "Students are increasingly using artificial intelligence for research, coding, presentations and creative projects.",
-        content:
-            "Artificial intelligence is becoming a common tool in education and student projects. The important part is learning how to use AI responsibly rather than depending on it for every task.",
-        url: "",
-        image: "",
-        publishedAt: hoursAgo(1),
-        source: {
-            name: "Gen G Pulse"
-        },
-        category: "Technology"
+  {
+    id: "fallback-ai",
+
+    title:
+      "AI is becoming a bigger part of student projects",
+
+    description:
+      "Students are increasingly using artificial intelligence for research, coding, presentations and creative projects.",
+
+    content:
+      "Artificial intelligence is becoming a common tool in education and student projects. The important part is learning how to use AI responsibly rather than depending on it for every task.",
+
+    url:
+      "https://ai.google/",
+
+    image: "",
+
+    publishedAt:
+      hoursAgo(1),
+
+    source: {
+      name: "Google AI"
     },
 
-    {
-        id: "fallback-space",
-        title: "India's space technology ecosystem keeps expanding",
-        description:
-            "Indian space startups and research organizations are working on new satellite, launch and Earth-observation technologies.",
-        content:
-            "India's space ecosystem includes government missions, private startups and research organizations. New technology is creating opportunities for engineering and technology students.",
-        url: "",
-        image: "",
-        publishedAt: hoursAgo(3),
-        source: {
-            name: "Gen G Pulse"
-        },
-        category: "Science"
+    category:
+      "Technology"
+  },
+
+  {
+    id: "fallback-space",
+
+    title:
+      "India's space technology ecosystem keeps expanding",
+
+    description:
+      "Indian space startups and research organizations are working on new satellite, launch and Earth-observation technologies.",
+
+    content:
+      "India's space ecosystem includes government missions, private startups and research organizations. New technology is creating opportunities for engineering and technology students.",
+
+    url:
+      "https://www.isro.gov.in/",
+
+    image: "",
+
+    publishedAt:
+      hoursAgo(3),
+
+    source: {
+      name: "ISRO"
     },
 
-    {
-        id: "fallback-career",
-        title: "Skills can matter as much as marks for early careers",
-        description:
-            "Projects, internships, communication and practical technical skills can help students demonstrate what they can actually do.",
-        content:
-            "Students can strengthen their career profile through projects, internships, competitions, certifications and practical experience.",
-        url: "",
-        image: "",
-        publishedAt: hoursAgo(5),
-        source: {
-            name: "Gen G Pulse"
-        },
-        category: "Career"
+    category:
+      "Science"
+  },
+
+  {
+    id: "fallback-career",
+
+    title:
+      "Skills can matter as much as marks for early careers",
+
+    description:
+      "Projects, internships, communication and practical technical skills can help students demonstrate what they can actually do.",
+
+    content:
+      "Students can strengthen their career profile through projects, internships, competitions, certifications and practical experience.",
+
+    url:
+      "https://www.ncs.gov.in/",
+
+    image: "",
+
+    publishedAt:
+      hoursAgo(5),
+
+    source: {
+      name: "National Career Service"
     },
 
-    {
-        id: "fallback-startup",
-        title: "Student startups are exploring AI-powered products",
-        description:
-            "Young founders are using AI to build tools for education, productivity, finance and everyday problems.",
-        content:
-            "AI has reduced some of the technical barriers for students who want to experiment with product ideas. Validation and solving a real problem remain important.",
-        url: "",
-        image: "",
-        publishedAt: hoursAgo(8),
-        source: {
-            name: "Gen G Pulse"
-        },
-        category: "Startups"
-    }
-];
+    category:
+      "Career"
+  },
 
+  {
+    id: "fallback-startups",
 
-/*
-   Guaranteed Blindspot stories.
+    title:
+      "Student founders are exploring AI-powered products",
 
-   These make sure Blindspot Feed has something to show
-   even when the real API doesn't contain those categories.
-*/
+    description:
+      "Young founders are using AI to build tools for education, productivity, finance and everyday problems.",
 
-const fallbackBlindspotArticles = [
+    content:
+      "AI has reduced some technical barriers for students who want to experiment with product ideas. Validation and solving a real problem remain important.",
 
-    {
-        id: "blindspot-sports",
-        title: "Sports technology is changing how athletes train",
-        description:
-            "Wearable sensors, computer vision and performance analytics are increasingly being used in sports training.",
-        content:
-            "Sports technology can collect performance data such as movement, speed, workload and recovery indicators. Coaches can use this information to make training decisions.",
-        url: "",
-        image: "https://images.unsplash.com/photo-1461896836934-ffe607ba8211?auto=format&fit=crop&w=1200&q=80",
-        publishedAt: hoursAgo(2),
-        source: {
-            name: "Gen G Pulse"
-        },
-        category: "Sports"
+    url:
+      "https://www.startupindia.gov.in/",
+
+    image: "",
+
+    publishedAt:
+      hoursAgo(7),
+
+    source: {
+      name: "Startup India"
     },
 
-    {
-        id: "blindspot-gaming",
-        title: "Game development is becoming more accessible",
-        description:
-            "Modern game engines and creator tools are lowering the barrier for students interested in developing games.",
-        content:
-            "Game development tools allow beginners to experiment with 2D and 3D projects without building an engine from scratch.",
-        url: "",
-        image: "https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=1200&q=80",
-        publishedAt: hoursAgo(7),
-        source: {
-            name: "Gen G Pulse"
-        },
-        category: "Gaming"
+    category:
+      "Startups"
+  },
+
+  {
+    id: "fallback-finance",
+
+    title:
+      "Digital payments continue to shape everyday spending",
+
+    description:
+      "India's digital payment ecosystem keeps changing how students and young adults pay, save and manage money.",
+
+    content:
+      "Digital payments make transactions easier, but users still need to understand privacy, security and responsible money habits.",
+
+    url:
+      "https://www.rbi.org.in/",
+
+    image: "",
+
+    publishedAt:
+      hoursAgo(9),
+
+    source: {
+      name: "Reserve Bank of India"
     },
 
-    {
-        id: "blindspot-entertainment",
-        title: "Streaming platforms are changing entertainment discovery",
-        description:
-            "Recommendation systems influence what viewers discover across movies, shows, music and online video.",
-        content:
-            "Digital platforms use recommendation systems to personalize content discovery. This can make finding new content easier while also creating personalized content bubbles.",
-        url: "",
-        image: "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&w=1200&q=80",
-        publishedAt: hoursAgo(12),
-        source: {
-            name: "Gen G Pulse"
-        },
-        category: "Entertainment"
-    }
+    category:
+      "Finance"
+  },
+
+  {
+    id: "fallback-education",
+
+    title:
+      "Learning outside the classroom can build a stronger portfolio",
+
+    description:
+      "Competitions, certifications and practical projects can complement classroom learning and show real-world ability.",
+
+    content:
+      "A practical portfolio gives students examples of what they can build or solve. Combining coursework with projects can make learning more visible.",
+
+    url:
+      "https://www.education.gov.in/",
+
+    image: "",
+
+    publishedAt:
+      hoursAgo(11),
+
+    source: {
+      name: "Ministry of Education"
+    },
+
+    category:
+      "Education"
+  },
+
+  {
+    id: "fallback-environment",
+
+    title:
+      "Clean-energy ideas are creating new opportunities",
+
+    description:
+      "Renewable energy, storage and efficiency projects are opening new paths for engineering, science and business students.",
+
+    content:
+      "The clean-energy transition needs technical, operational and business skills. Students can explore projects and internships around these areas.",
+
+    url:
+      "https://mnre.gov.in/",
+
+    image: "",
+
+    publishedAt:
+      hoursAgo(14),
+
+    source: {
+      name: "MNRE"
+    },
+
+    category:
+      "Environment"
+  },
+
+  {
+    id: "fallback-gaming",
+
+    title:
+      "Game development is becoming more accessible",
+
+    description:
+      "Modern game engines and creator tools are lowering the barrier for students interested in developing games.",
+
+    content:
+      "Game development tools allow beginners to experiment with 2D and 3D projects without building an engine from scratch.",
+
+    url:
+      "https://unity.com/learn",
+
+    image: "",
+
+    publishedAt:
+      hoursAgo(16),
+
+    source: {
+      name: "Unity Learn"
+    },
+
+    category:
+      "Gaming"
+  },
+
+  {
+    id: "fallback-sports",
+
+    title:
+      "Sports technology is changing how athletes train",
+
+    description:
+      "Wearable sensors, computer vision and performance analytics are increasingly being used in sports training.",
+
+    content:
+      "Sports technology can collect performance data such as movement, speed, workload and recovery indicators. Coaches can use this information to support training decisions.",
+
+    url:
+      "https://www.olympics.com/athletes",
+
+    image: "",
+
+    publishedAt:
+      hoursAgo(18),
+
+    source: {
+      name: "Olympics"
+    },
+
+    category:
+      "Sports"
+  },
+
+  {
+    id: "fallback-health",
+
+    title:
+      "Health information is becoming more digital",
+
+    description:
+      "Apps, wearables and digital health platforms are giving people new ways to manage information and routines.",
+
+    content:
+      "Digital health tools can make information easier to access, but people should rely on qualified professionals for medical decisions.",
+
+    url:
+      "https://www.mohfw.gov.in/",
+
+    image: "",
+
+    publishedAt:
+      hoursAgo(21),
+
+    source: {
+      name: "MoHFW"
+    },
+
+    category:
+      "Health"
+  },
+
+  {
+    id: "fallback-entertainment",
+
+    title:
+      "Streaming platforms are changing entertainment discovery",
+
+    description:
+      "Recommendation systems influence what viewers discover across movies, shows, music and online video.",
+
+    content:
+      "Digital platforms use recommendation systems to personalize content discovery. This can make finding new content easier while also creating content bubbles.",
+
+    url:
+      "https://www.youtube.com/creators/",
+
+    image: "",
+
+    publishedAt:
+      hoursAgo(24),
+
+    source: {
+      name: "YouTube Creators"
+    },
+
+    category:
+      "Entertainment"
+  },
+
+  {
+    id: "fallback-fashion",
+
+    title:
+      "Sustainable fashion is becoming part of the design conversation",
+
+    description:
+      "Young creators and brands are experimenting with reused materials, smaller collections and lower-waste production.",
+
+    content:
+      "Sustainable fashion can include material choices, product lifecycles and responsible production practices.",
+
+    url:
+      "https://www.unep.org/",
+
+    image: "",
+
+    publishedAt:
+      hoursAgo(28),
+
+    source: {
+      name: "UNEP"
+    },
+
+    category:
+      "Fashion"
+  }
 ];
 
 
 /* =========================================================
-   CATEGORY INFORMATION
+   OPPORTUNITIES
 ========================================================= */
 
-const categoryIcons = {
+const opportunityData = [
 
-    technology: "??",
+  {
+    id:
+      "opp-scholarship",
 
-    tech: "??",
+    type:
+      "SCHOLARSHIP",
 
-    science: "??",
+    icon:
+      "SCH",
 
-    space: "??",
+    title:
+      "Scholarship opportunities",
 
-    career: "??",
+    description:
+      "Find student funding opportunities, eligibility details, documents and deadlines.",
 
-    jobs: "??",
+    meta:
+      ["Apply", "Students", "Funding"],
 
-    startup: "??",
+    action:
+      "Apply",
 
-    startups: "??",
+    url:
+      "https://scholarships.gov.in/",
 
-    finance: "??",
+    category:
+      "Education",
 
-    business: "??",
+    source:
+      "National Scholarship Portal",
 
-    education: "??",
+    article:
+      "fallback-education"
+  },
 
-    campus: "??",
+  {
+    id:
+      "opp-career",
 
-    sports: "?",
+    type:
+      "CAMPUS / CAREER",
 
-    gaming: "??",
+    icon:
+      "JOB",
 
-    entertainment: "??",
+    title:
+      "Career & internship opportunities",
 
-    celebrity: "?",
+    description:
+      "Explore internships, competitions and early-career pathways that help you build practical experience.",
 
-    fashion: "??",
+    meta:
+      ["Connect", "Internships", "Skills"],
 
-    health: "??",
+    action:
+      "Connect",
 
-    policy: "???",
+    url:
+      "https://internshala.com/",
 
-    politics: "???",
+    category:
+      "Career",
 
-    environment: "??",
+    source:
+      "Internshala",
 
-    climate: "??",
+    article:
+      "fallback-career"
+  },
 
-    default: "??"
-};
+  {
+    id:
+      "opp-events",
 
+    type:
+      "EVENTS",
 
-const availableCategories = [
+    icon:
+      "EVT",
 
-    "Technology",
-    "Science",
-    "Career",
-    "Startups",
-    "Finance",
-    "Education",
-    "Sports",
-    "Gaming",
-    "Entertainment",
-    "Fashion",
-    "Health",
-    "Environment"
+    title:
+      "Student events & hackathons",
+
+    description:
+      "Discover hackathons, workshops, bootcamps and community events you can attend.",
+
+    meta:
+      ["Attend", "Events", "Community"],
+
+    action:
+      "Attend",
+
+    url:
+      "https://unstop.com/",
+
+    category:
+      "Startups",
+
+    source:
+      "Unstop",
+
+    article:
+      "fallback-startups"
+  }
 ];
 
 
+const blindspotFallback =
+  fallbackArticles.filter(
+    article =>
+      [
+        "Sports",
+        "Gaming",
+        "Entertainment"
+      ].includes(
+        article.category
+      )
+  );
+
+
+fallbackArticles.forEach(
+  article => {
+    article.isFallback = true;
+  }
+);
+
+
 /* =========================================================
-   DOM HELPERS
+   HELPERS
 ========================================================= */
 
 function $(selector) {
-
-    return document.querySelector(selector);
+  return document.querySelector(selector);
 }
 
 
 function $all(selector) {
-
-    return document.querySelectorAll(selector);
+  return document.querySelectorAll(selector);
 }
 
 
-/* =========================================================
-   STORAGE
-========================================================= */
-
-function loadSavedIds() {
-
-    try {
-
-        const data =
-            JSON.parse(
-                localStorage.getItem("genGPulseSaved") || "[]"
-            );
-
-        return Array.isArray(data) ? data : [];
-
-    } catch {
-
-        return [];
-    }
+function hoursAgo(hours) {
+  return new Date(
+    Date.now() -
+    hours * 3600000
+  ).toISOString();
 }
 
-
-function saveSavedIds() {
-
-    localStorage.setItem(
-        "genGPulseSaved",
-        JSON.stringify(state.savedIds)
-    );
-}
-
-
-function loadBlindspotCategories() {
-
-    try {
-
-        const data =
-            JSON.parse(
-                localStorage.getItem(
-                    "genGPulseBlindspots"
-                ) || "[]"
-            );
-
-        if (Array.isArray(data) && data.length) {
-
-            return data;
-        }
-
-    } catch {
-        // Ignore storage errors.
-    }
-
-
-    /*
-       Default topics.
-
-       User can change them in Radar.
-    */
-
-    return [
-        "Sports",
-        "Gaming",
-        "Entertainment"
-    ];
-}
-
-
-function saveBlindspotCategories() {
-
-    localStorage.setItem(
-        "genGPulseBlindspots",
-        JSON.stringify(
-            state.blindspotCategories
-        )
-    );
-}
-
-
-/* =========================================================
-   HTML SAFETY
-========================================================= */
 
 function escapeHtml(value) {
 
-    if (value === null || value === undefined) {
-
-        return "";
-    }
-
-    return String(value)
-
-        .replaceAll("&", "&amp;")
-
-        .replaceAll("<", "&lt;")
-
-        .replaceAll(">", "&gt;")
-
-        .replaceAll('"', "&quot;")
-
-        .replaceAll("'", "&#039;");
+  return String(
+    value ?? ""
+  )
+    .replaceAll(
+      "&",
+      "&amp;"
+    )
+    .replaceAll(
+      "<",
+      "&lt;"
+    )
+    .replaceAll(
+      ">",
+      "&gt;"
+    )
+    .replaceAll(
+      '"',
+      "&quot;"
+    )
+    .replaceAll(
+      "'",
+      "&#039;"
+    );
 }
 
-
-/* =========================================================
-   URL SAFETY
-========================================================= */
 
 function safeUrl(value) {
 
-    if (!value) {
+  if (!value) {
+    return "";
+  }
 
-        return "";
-    }
+  try {
 
-    try {
+    const url =
+      new URL(value);
 
-        const url = new URL(value);
+    return [
+      "http:",
+      "https:"
+    ].includes(
+      url.protocol
+    )
+      ? url.href
+      : "";
 
-        if (
-            url.protocol === "http:" ||
-            url.protocol === "https:"
-        ) {
-
-            return url.href;
-        }
-
-    } catch {
-        // Invalid URL.
-    }
+  } catch {
 
     return "";
+  }
 }
 
 
-/* =========================================================
-   DATE / TIME
-========================================================= */
-
-/*
-   THIS FIXES:
-
-   ${diffHours} hrs ago
-
-   The website will now show:
-
-   Just now
-   15 min ago
-   2 hrs ago
-   1 day ago
-   etc.
-*/
-
-function timeAgo(dateValue) {
-
-    if (!dateValue) {
-
-        return "Recently";
-    }
-
-    const date = new Date(dateValue);
-
-    if (Number.isNaN(date.getTime())) {
-
-        return "Recently";
-    }
-
-    let diffMs =
-        Date.now() - date.getTime();
-
-    /*
-       Future dates can happen because of timezone differences.
-    */
-
-    if (diffMs < 0) {
-
-        diffMs = 0;
-    }
-
-
-    const diffMinutes =
-        Math.floor(
-            diffMs / (1000 * 60)
-        );
-
-
-    if (diffMinutes < 1) {
-
-        return "Just now";
-    }
-
-
-    if (diffMinutes < 60) {
-
-        return `${diffMinutes} min ago`;
-    }
-
-
-    const diffHours =
-        Math.floor(
-            diffMinutes / 60
-        );
-
-
-    if (diffHours < 24) {
-
-        return `${diffHours} hr${diffHours === 1 ? "" : "s"} ago`;
-    }
-
-
-    const diffDays =
-        Math.floor(
-            diffHours / 24
-        );
-
-
-    if (diffDays < 7) {
-
-        return `${diffDays} day${diffDays === 1 ? "" : "s"} ago`;
-    }
-
-
-    const diffWeeks =
-        Math.floor(
-            diffDays / 7
-        );
-
-
-    if (diffWeeks < 5) {
-
-        return `${diffWeeks} week${diffWeeks === 1 ? "" : "s"} ago`;
-    }
-
-
-    const diffMonths =
-        Math.floor(
-            diffDays / 30
-        );
-
-
-    return `${diffMonths} month${diffMonths === 1 ? "" : "s"} ago`;
-}
-
-
-/* =========================================================
-   CATEGORY
-========================================================= */
-
-function normalizeCategory(article) {
-
-    let category =
-        article.category ||
-        article.type ||
-        article.section ||
-        "";
-
-
-    if (typeof category === "object") {
-
-        category =
-            category.name ||
-            category.title ||
-            "";
-    }
-
-
-    if (!category) {
-
-        const text = (
-            `${article.title || ""} ${article.description || ""}`
-        ).toLowerCase();
-
-
-        if (
-            text.includes("sport") ||
-            text.includes("cricket") ||
-            text.includes("football")
-        ) {
-
-            return "Sports";
-        }
-
-
-        if (
-            text.includes("game") ||
-            text.includes("gaming")
-        ) {
-
-            return "Gaming";
-        }
-
-
-        if (
-            text.includes("startup") ||
-            text.includes("founder")
-        ) {
-
-            return "Startups";
-        }
-
-
-        if (
-            text.includes("space") ||
-            text.includes("satellite")
-        ) {
-
-            return "Space";
-        }
-
-
-        if (
-            text.includes("ai") ||
-            text.includes("technology") ||
-            text.includes("tech")
-        ) {
-
-            return "Technology";
-        }
-
-
-        if (
-            text.includes("education") ||
-            text.includes("student") ||
-            text.includes("college")
-        ) {
-
-            return "Education";
-        }
-
-
-        return "Technology";
-    }
-
-
-    return String(category)
-        .trim()
-        .replace(/\s+/g, " ")
-        .replace(/^./, char => char.toUpperCase());
-}
-
-
-function categoryKey(category) {
-
-    return String(category || "")
-        .toLowerCase()
-        .replace(/[^a-z0-9]/g, "");
+function categoryKey(value) {
+
+  return String(
+    value || ""
+  )
+    .toLowerCase()
+    .replace(
+      /[^a-z0-9]/g,
+      ""
+    );
 }
 
 
 function categoryIcon(category) {
 
-    return (
-        categoryIcons[
-            categoryKey(category)
-        ] ||
-        categoryIcons.default
-    );
+  const icons = {
+
+    technology:
+      "AI",
+
+    science:
+      "SCI",
+
+    career:
+      "GO",
+
+    startups:
+      "ST",
+
+    finance:
+      "â‚¹",
+
+    education:
+      "EDU",
+
+    sports:
+      "SP",
+
+    gaming:
+      "GM",
+
+    entertainment:
+      "TV",
+
+    fashion:
+      "FD",
+
+    health:
+      "+",
+
+    environment:
+      "ECO",
+
+    general:
+      "â€¢"
+  };
+
+  return (
+    icons[
+      categoryKey(category)
+    ] ||
+    icons.general
+  );
 }
 
 
-/* =========================================================
-   SOURCE
-========================================================= */
+function timeAgo(value) {
 
-function getSourceName(article) {
+  if (!value) {
+    return "Recently";
+  }
+
+  const date =
+    new Date(value);
+
+  if (
+    Number.isNaN(
+      date.getTime()
+    )
+  ) {
+    return "Recently";
+  }
+
+  const mins =
+    Math.max(
+      0,
+      Math.floor(
+        (
+          Date.now() -
+          date.getTime()
+        ) / 60000
+      )
+    );
+
+  if (mins < 1) {
+    return "Just now";
+  }
+
+  if (mins < 60) {
+    return `${mins}m ago`;
+  }
+
+  const hours =
+    Math.floor(
+      mins / 60
+    );
+
+  if (hours < 24) {
+    return `${hours}h ago`;
+  }
+
+  const days =
+    Math.floor(
+      hours / 24
+    );
+
+  if (days === 1) {
+    return "Yesterday";
+  }
+
+  if (days < 7) {
+    return `${days}d ago`;
+  }
+
+  return date.toLocaleDateString(
+    "en-IN",
+    {
+      day:
+        "numeric",
+
+      month:
+        "short",
+
+      year:
+        "numeric"
+    }
+  );
+}
+
+
+function normalizeCategory(article) {
+
+  let category =
+    article?.category ||
+    article?.type ||
+    article?.section ||
+    "";
+
+  if (
+    typeof category ===
+    "object"
+  ) {
+    category =
+      category.name ||
+      category.title ||
+      "";
+  }
+
+  if (!category) {
+
+    const text =
+      `
+        ${article?.title || ""}
+        ${article?.description || ""}
+      `.toLowerCase();
 
     if (
-        article.source &&
-        typeof article.source === "object"
+      /sport|cricket|football/.test(
+        text
+      )
     ) {
-
-        return (
-            article.source.name ||
-            article.source.title ||
-            "News"
-        );
+      return "Sports";
     }
 
+    if (
+      /gaming|game/.test(
+        text
+      )
+    ) {
+      return "Gaming";
+    }
 
-    return (
-        article.source ||
-        article.sourceName ||
-        "News"
+    if (
+      /startup|founder/.test(
+        text
+      )
+    ) {
+      return "Startups";
+    }
+
+    if (
+      /space|satellite|science/.test(
+        text
+      )
+    ) {
+      return "Science";
+    }
+
+    if (
+      /ai|technology|tech/.test(
+        text
+      )
+    ) {
+      return "Technology";
+    }
+
+    if (
+      /education|student|college|university/.test(
+        text
+      )
+    ) {
+      return "Education";
+    }
+
+    if (
+      /finance|market|bank|economy/.test(
+        text
+      )
+    ) {
+      return "Finance";
+    }
+
+    if (
+      /health|medical/.test(
+        text
+      )
+    ) {
+      return "Health";
+    }
+
+    if (
+      /environment|climate|energy/.test(
+        text
+      )
+    ) {
+      return "Environment";
+    }
+
+    return "Technology";
+  }
+
+  return String(category)
+    .trim()
+    .replace(
+      /\s+/g,
+      " "
+    )
+    .replace(
+      /^./,
+      char =>
+        char.toUpperCase()
     );
 }
 
 
-/* =========================================================
-   ARTICLE NORMALIZATION
-========================================================= */
+function sourceName(article) {
 
-function normalizeArticle(article, index) {
+  if (
+    article?.source &&
+    typeof article.source ===
+      "object"
+  ) {
 
-    if (!article || typeof article !== "object") {
+    return (
+      article.source.name ||
+      article.source.title ||
+      "News"
+    );
+  }
 
-        return null;
-    }
-
-
-    const title =
-        article.title ||
-        article.headline ||
-        article.name ||
-        "Untitled story";
-
-
-    const description =
-        article.description ||
-        article.summary ||
-        article.excerpt ||
-        article.content ||
-        "No description available.";
+  return (
+    article?.source ||
+    article?.sourceName ||
+    "News"
+  );
+}
 
 
-    const content =
-        article.content ||
-        description;
+function normalizeArticle(
+  article,
+  index = 0
+) {
 
+  if (
+    !article ||
+    typeof article !==
+      "object"
+  ) {
+    return null;
+  }
 
-    const url =
-        safeUrl(
-            article.url ||
-            article.link ||
-            article.articleUrl ||
-            ""
-        );
+  const title =
+    String(
+      article.title ||
+      article.headline ||
+      article.name ||
+      "Untitled story"
+    );
 
+  const description =
+    String(
+      article.description ||
+      article.summary ||
+      article.excerpt ||
+      article.content ||
+      "No description available."
+    )
+      .replace(
+        /\s+/g,
+        " "
+      )
+      .trim();
 
-    const image =
-        safeUrl(
-            article.image ||
-            article.imageUrl ||
-            article.urlToImage ||
-            article.thumbnail ||
-            ""
-        );
+  const category =
+    normalizeCategory(
+      article
+    );
 
-
-    const publishedAt =
-        article.publishedAt ||
-        article.published_at ||
-        article.date ||
-        article.published ||
-        article.createdAt ||
-        "";
-
-
-    const sourceName =
-        getSourceName(article);
-
-
-    const category =
-        normalizeCategory(article);
-
-
-    const id =
-        String(
-            article.id ||
-            article.guid ||
-            article.url ||
-            `${title}-${index}`
-        );
-
-
-    return {
-
-        ...article,
-
-        id,
-
-        title: String(title),
-
-        description:
-            String(description)
-                .replace(/\s+/g, " ")
-                .trim(),
-
-        content: String(content),
-
-        url,
-
-        image,
-
-        publishedAt,
-
-        source: {
-            name: String(sourceName)
-        },
-
+  const image =
+    safeUrl(
+      article.image ||
+      article.imageUrl ||
+      article.urlToImage ||
+      article.thumbnail ||
+      ""
+    ) ||
+    fallbackImages[
+      categoryKey(
         category
+      )
+    ] ||
+    fallbackImages.general;
 
-    };
+  return {
+
+    ...article,
+
+    id:
+      String(
+        article.id ||
+        article.guid ||
+        article.url ||
+        `${title}-${index}`
+      ),
+
+    title,
+
+    description,
+
+    content:
+      String(
+        article.content ||
+        description
+      ),
+
+    url:
+      safeUrl(
+        article.url ||
+        article.link ||
+        article.articleUrl ||
+        ""
+      ),
+
+    image,
+
+    publishedAt:
+      article.publishedAt ||
+      article.published_at ||
+      article.date ||
+      article.createdAt ||
+      "",
+
+    source: {
+      name:
+        sourceName(article)
+    },
+
+    category
+  };
+}
+
+
+function extractArticles(
+  payload
+) {
+
+  if (
+    Array.isArray(payload)
+  ) {
+    return payload;
+  }
+
+  if (
+    !payload ||
+    typeof payload !==
+      "object"
+  ) {
+    return [];
+  }
+
+  if (
+    Array.isArray(
+      payload.articles
+    )
+  ) {
+    return payload.articles;
+  }
+
+  if (
+    Array.isArray(
+      payload.news
+    )
+  ) {
+    return payload.news;
+  }
+
+  if (
+    Array.isArray(
+      payload.results
+    )
+  ) {
+    return payload.results;
+  }
+
+  if (
+    Array.isArray(
+      payload.items
+    )
+  ) {
+    return payload.items;
+  }
+
+  if (
+    Array.isArray(
+      payload.data
+    )
+  ) {
+    return payload.data;
+  }
+
+  if (
+    payload.data &&
+    Array.isArray(
+      payload.data.articles
+    )
+  ) {
+    return payload.data.articles;
+  }
+
+  return [];
 }
 
 
 /* =========================================================
-   API RESPONSE NORMALIZATION
+   LOCAL STORAGE
 ========================================================= */
 
-function extractArticles(payload) {
+function loadSavedIds() {
 
-    if (Array.isArray(payload)) {
+  try {
 
-        return payload;
-    }
+    const value =
+      JSON.parse(
+        localStorage.getItem(
+          "genGPulseSaved"
+        ) || "[]"
+      );
 
+    return Array.isArray(value)
+      ? value.map(String)
+      : [];
 
-    if (!payload || typeof payload !== "object") {
-
-        return [];
-    }
-
-
-    /*
-       Your actual backend format:
-
-       payload.articles
-    */
-
-    if (Array.isArray(payload.articles)) {
-
-        return payload.articles;
-    }
-
-
-    /*
-       Additional formats supported just in case.
-    */
-
-    if (Array.isArray(payload.news)) {
-
-        return payload.news;
-    }
-
-
-    if (Array.isArray(payload.results)) {
-
-        return payload.results;
-    }
-
-
-    if (Array.isArray(payload.items)) {
-
-        return payload.items;
-    }
-
-
-    if (
-        payload.data &&
-        Array.isArray(payload.data)
-    ) {
-
-        return payload.data;
-    }
-
-
-    if (
-        payload.data &&
-        Array.isArray(payload.data.articles)
-    ) {
-
-        return payload.data.articles;
-    }
-
+  } catch {
 
     return [];
+  }
 }
 
 
-/* =========================================================
-   FETCH NEWS
-========================================================= */
+function loadSavedArticles() {
 
-async function loadNews() {
+  try {
 
-    if (state.loading) {
+    const value =
+      JSON.parse(
+        localStorage.getItem(
+          "genGPulseSavedArticles"
+        ) || "[]"
+      );
 
-        return;
-    }
+    return Array.isArray(value)
+      ? value
+      : [];
 
+  } catch {
 
-    state.loading = true;
-
-
-    showLoadingState();
-
-
-    try {
-
-        const response =
-            await fetch(
-                NEWS_API,
-                {
-                    method: "GET",
-
-                    headers: {
-                        "Accept": "application/json"
-                    },
-
-                    cache: "no-store"
-                }
-            );
-
-
-        if (!response.ok) {
-
-            throw new Error(
-                `News API returned ${response.status}`
-            );
-        }
-
-
-        const payload =
-            await response.json();
-
-
-        const rawArticles =
-            extractArticles(payload);
-
-
-        const normalized =
-            rawArticles
-                .map(
-                    normalizeArticle
-                )
-                .filter(Boolean);
-
-
-        if (!normalized.length) {
-
-            /*
-               API worked but returned no usable articles.
-            */
-
-            state.articles =
-                fallbackArticles.map(
-                    normalizeArticle
-                );
-
-        } else {
-
-            state.articles =
-                normalized;
-        }
-
-
-        state.swipingIndex = 0;
-        state.blindspotIndex = 0;
-
-
-        renderEverything();
-
-
-    } catch (error) {
-
-        console.error(
-            "Gen G Pulse news error:",
-            error
-        );
-
-
-        /*
-           Instead of repeatedly showing:
-
-           ERROR
-           Unable to load news
-
-           we use fallback content.
-
-           The real API remains the primary source.
-        */
-
-        state.articles =
-            fallbackArticles.map(
-                normalizeArticle
-            );
-
-
-        renderEverything();
-
-
-        showToast(
-            "Live news could not be reached. Showing backup stories."
-        );
-
-    } finally {
-
-        state.loading = false;
-    }
+    return [];
+  }
 }
 
 
-/* =========================================================
-   LOADING STATE
-========================================================= */
+function saveSavedState() {
 
-function showLoadingState() {
+  localStorage.setItem(
+    "genGPulseSaved",
+    JSON.stringify(
+      state.savedIds
+    )
+  );
 
-    const loadingHtml = `
-        <div class="loading-card">
-            <div>
-                ?? Loading Gen Z news...
-            </div>
-        </div>
-    `;
+  localStorage.setItem(
+    "genGPulseSavedArticles",
+    JSON.stringify(
+      state.savedArticles
+    )
+  );
+}
 
 
-    const grids = [
-        "#homeNewsGrid",
-        "#flashNewsGrid",
-        "#explainGrid"
+function loadBlindspotCategories() {
+
+  try {
+
+    const value =
+      JSON.parse(
+        localStorage.getItem(
+          "genGPulseBlindspots"
+        ) || "[]"
+      );
+
+    return (
+      Array.isArray(value) &&
+      value.length
+    )
+      ? value
+      : [
+          "Sports",
+          "Gaming",
+          "Entertainment"
+        ];
+
+  } catch {
+
+    return [
+      "Sports",
+      "Gaming",
+      "Entertainment"
     ];
+  }
+}
 
 
-    grids.forEach(selector => {
+function saveBlindspotCategories() {
 
-        const element = $(selector);
-
-        if (element) {
-
-            element.innerHTML =
-                loadingHtml;
-        }
-    });
+  localStorage.setItem(
+    "genGPulseBlindspots",
+    JSON.stringify(
+      state.blindspotCategories
+    )
+  );
 }
 
 
 /* =========================================================
-   NEWS CARD
+   ARTICLE COLLECTION
 ========================================================= */
 
-function createNewsCard(article) {
+function allArticles() {
 
-    const saved =
-        state.savedIds.includes(
-            article.id
+  return [
+    ...state.articles,
+    ...state.savedArticles,
+    ...fallbackArticles,
+
+    ...opportunityData
+      .map(
+        item =>
+          findArticle(
+            item.article
+          )
+      )
+      .filter(Boolean)
+  ];
+}
+
+
+function findArticle(id) {
+
+  return allArticlesRaw()
+    .find(
+      article =>
+        String(article.id) ===
+        String(id)
+    );
+}
+
+
+function allArticlesRaw() {
+
+  const map =
+    new Map();
+
+  [
+    ...state.articles,
+    ...state.savedArticles,
+    ...fallbackArticles,
+    ...blindspotFallback
+  ]
+    .forEach(
+      article => {
+
+        map.set(
+          String(article.id),
+          article
         );
+      }
+    );
+
+  return [
+    ...map.values()
+  ];
+}
 
 
-    const imageHtml =
-        article.image
+/* =========================================================
+   UI HELPERS
+========================================================= */
 
-            ? `
-                <img
-                    src="${escapeHtml(article.image)}"
-                    alt=""
-                    loading="lazy"
-                    onerror="this.style.display='none'; this.nextElementSibling.style.display='grid';"
-                >
+function showToast(
+  message
+) {
 
-                <div
-                    class="news-image-placeholder"
-                    style="display:none"
-                >
-                    ${categoryIcon(article.category)}
-                </div>
-            `
+  const toast =
+    $("#toast");
 
-            : `
-                <div class="news-image-placeholder">
-                    ${categoryIcon(article.category)}
-                </div>
-            `;
+  if (!toast) {
+    return;
+  }
 
+  toast.textContent =
+    message;
 
-    return `
-        <article class="news-card">
+  toast.classList.add(
+    "show"
+  );
 
-            <div class="news-image">
+  clearTimeout(
+    showToast.timer
+  );
 
-                ${imageHtml}
-
-                <span class="news-category">
-                    ${escapeHtml(article.category)}
-                </span>
-
-            </div>
+  showToast.timer =
+    setTimeout(
+      () =>
+        toast.classList.remove(
+          "show"
+        ),
+      2300
+    );
+}
 
 
-            <div class="news-body">
+function emptyState(
+  title,
+  description
+) {
 
-                <div class="news-meta">
+  return `
+    <div class="empty-state">
+      <div>
+        <h3>
+          ${escapeHtml(title)}
+        </h3>
 
-                    <span>
-                        ${escapeHtml(article.source.name)}
-                    </span>
-
-                    <span>
-                        ${timeAgo(article.publishedAt)}
-                    </span>
-
-                </div>
-
-
-                <h3 class="news-title">
-                    ${escapeHtml(article.title)}
-                </h3>
-
-
-                <p class="news-description">
-                    ${escapeHtml(article.description)}
-                </p>
+        <p>
+          ${escapeHtml(description)}
+        </p>
+      </div>
+    </div>
+  `;
+}
 
 
-                <div class="news-actions">
+/* =========================================================
+   NEWS CARD ACTIONS
+========================================================= */
 
-                    <button
-                        class="action-btn ai-btn"
-                        data-id="${escapeHtml(article.id)}"
-                        data-ai-type="summary"
-                    >
-                        ?? Summary
-                    </button>
+function actionButtons(
+  article
+) {
+
+  const saved =
+    state.savedIds.includes(
+      String(article.id)
+    );
+
+  const linkText =
+    article.isFallback
+      ? "Open source â†’"
+      : "Open direct article â†’";
+
+  const link =
+    article.url
+      ? `
+        <button
+          class="news-action link article-read"
+          data-id="${escapeHtml(article.id)}"
+          type="button"
+        >
+          ${linkText}
+        </button>
+      `
+      : `
+        <button
+          class="news-action link article-read"
+          data-id="${escapeHtml(article.id)}"
+          type="button"
+        >
+          Open article â†’
+        </button>
+      `;
+
+  return `
+    <div class="news-actions">
+
+      <button
+        class="news-action ai-btn"
+        data-id="${escapeHtml(article.id)}"
+        data-ai-type="summary"
+        type="button"
+      >
+        AI Summary
+      </button>
+
+      <button
+        class="news-action ai-btn"
+        data-id="${escapeHtml(article.id)}"
+        data-ai-type="explain"
+        type="button"
+      >
+        AI Explanation
+      </button>
+
+      ${link}
+
+      <button
+        class="news-action save ${
+          saved ? "active" : ""
+        }"
+        data-id="${escapeHtml(article.id)}"
+        type="button"
+      >
+        ${
+          saved
+            ? "Saved âœ“"
+            : "Save story"
+        }
+      </button>
+
+    </div>
+  `;
+}
 
 
-                    <button
-                        class="action-btn ai-btn"
-                        data-id="${escapeHtml(article.id)}"
-                        data-ai-type="explain"
-                    >
-                        ?? Explain
-                    </button>
+function createNewsCard(
+  article,
+  extraClass = ""
+) {
 
+  const image =
+    article.image
+      ? `
+        <img
+          src="${escapeHtml(article.image)}"
+          alt=""
+          loading="lazy"
+          onerror="this.style.display='none';this.nextElementSibling.style.display='grid';"
+        >
 
-                    <button
-                        class="action-btn save ${saved ? "active" : ""}"
-                        data-id="${escapeHtml(article.id)}"
-                    >
-                        ${saved ? "?" : "?"} Save
-                    </button>
+        <div
+          class="news-image-placeholder"
+          style="display:none"
+        >
+          ${categoryIcon(article.category)}
+        </div>
+      `
+      : `
+        <div class="news-image-placeholder">
+          ${categoryIcon(article.category)}
+        </div>
+      `;
 
+  return `
+    <article
+      class="news-card ${extraClass}"
+    >
 
-                    ${
-                        article.url
+      <div class="news-image">
+        ${image}
 
-                            ? `
-                                <button
-                                    class="action-btn read article-read"
-                                    data-id="${escapeHtml(article.id)}"
-                                >
-                                    ?? Read
-                                </button>
-                            `
+        <span class="news-category">
+          ${escapeHtml(article.category)}
+        </span>
+      </div>
 
-                            : ""
-                    }
+      <div class="news-body">
 
-                </div>
+        <div class="news-meta">
 
-            </div>
+          <span>
+            ${escapeHtml(
+              article.source.name
+            )}
+          </span>
 
-        </article>
-    `;
+          <span>
+            ${escapeHtml(
+              timeAgo(
+                article.publishedAt
+              )
+            )}
+          </span>
+
+        </div>
+
+        <h3 class="news-title">
+          ${escapeHtml(
+            article.title
+          )}
+        </h3>
+
+        <p class="news-description">
+          ${escapeHtml(
+            article.description
+          )}
+        </p>
+
+        ${actionButtons(
+          article
+        )}
+
+      </div>
+
+    </article>
+  `;
 }
 
 
@@ -1200,39 +1525,51 @@ function createNewsCard(article) {
    HOME
 ========================================================= */
 
+function currentHomeArticles() {
+
+  const query =
+    state.homeSearch
+      .trim()
+      .toLowerCase();
+
+  return state.articles.filter(
+    article =>
+      !query ||
+      `
+        ${article.title}
+        ${article.description}
+        ${article.category}
+        ${article.source.name}
+      `
+        .toLowerCase()
+        .includes(query)
+  );
+}
+
+
 function renderHome() {
 
-    const grid =
-        $("#homeNewsGrid");
+  const grid =
+    $("#homeNewsGrid");
 
+  if (!grid) {
+    return;
+  }
 
-    if (!grid) {
+  const articles =
+    currentHomeArticles();
 
-        return;
-    }
-
-
-    const articles =
-        state.articles.slice(0, 6);
-
-
-    if (!articles.length) {
-
-        grid.innerHTML =
-            emptyState(
-                "??",
-                "No stories yet",
-                "News will appear here when available."
-            );
-
-        return;
-    }
-
-
-    grid.innerHTML =
-        articles
-            .map(createNewsCard)
-            .join("");
+  grid.innerHTML =
+    articles.length
+      ? articles
+          .map(
+            createNewsCard
+          )
+          .join("")
+      : emptyState(
+          "No stories match your search",
+          "Try a different topic or use Gen Z Flash filters."
+        );
 }
 
 
@@ -1240,39 +1577,310 @@ function renderHome() {
    FLASH
 ========================================================= */
 
+function renderFlashFilters() {
+
+  const bar =
+    $("#flashFilterBar");
+
+  if (!bar) {
+    return;
+  }
+
+  const categories = [
+    "All",
+    ...availableCategories
+  ];
+
+  bar.innerHTML =
+    categories
+      .map(
+        category =>
+          `
+            <button
+              class="filter-btn ${
+                state.flashCategory ===
+                category
+                  ? "active"
+                  : ""
+              }"
+              data-flash-category="${escapeHtml(category)}"
+              type="button"
+            >
+              ${escapeHtml(
+                category
+              )}
+            </button>
+          `
+      )
+      .join("");
+}
+
+
 function renderFlash() {
 
-    const grid =
-        $("#flashNewsGrid");
+  const grid =
+    $("#flashNewsGrid");
+
+  if (!grid) {
+    return;
+  }
+
+  renderFlashFilters();
+
+  const query =
+    state.flashSearch
+      .trim()
+      .toLowerCase();
+
+  const articles =
+    state.articles.filter(
+      article =>
+        (
+          state.flashCategory ===
+          "All" ||
+          categoryKey(
+            article.category
+          ) ===
+            categoryKey(
+              state.flashCategory
+            )
+        ) &&
+        (
+          !query ||
+          `
+            ${article.title}
+            ${article.description}
+            ${article.category}
+            ${article.source.name}
+          `
+            .toLowerCase()
+            .includes(query)
+        )
+    );
+
+  grid.innerHTML =
+    articles.length
+      ? articles
+          .map(
+            createNewsCard
+          )
+          .join("")
+      : emptyState(
+          "No matching stories",
+          "Try another search or category."
+        );
+}
 
 
-    if (!grid) {
+/* =========================================================
+   REAL NEWS SEARCH
+========================================================= */
 
-        return;
+async function searchNews(
+  query
+) {
+
+  const q =
+    String(
+      query || ""
+    ).trim();
+
+  if (!q) {
+
+    state.homeSearch = "";
+    state.flashSearch = "";
+    state.flashCategory =
+      "All";
+
+    showView(
+      "home"
+    );
+
+    await loadNews();
+
+    return;
+  }
+
+  const homeInput =
+    $("#homeSearchInput");
+
+  const flashInput =
+    $("#flashSearchInput");
+
+  if (homeInput) {
+    homeInput.value =
+      q;
+  }
+
+  if (flashInput) {
+    flashInput.value =
+      q;
+  }
+
+  state.homeSearch =
+    q;
+
+  state.flashSearch =
+    q;
+
+  state.flashCategory =
+    "All";
+
+  const homeGrid =
+    $("#homeNewsGrid");
+
+  if (homeGrid) {
+
+    homeGrid.innerHTML = `
+      <div class="loading-card">
+        Searching all matching news...
+      </div>
+    `;
+  }
+
+  try {
+
+    const response =
+      await fetch(
+        `${NEWS_API}?q=${encodeURIComponent(q)}`,
+        {
+          headers: {
+            Accept:
+              "application/json"
+          },
+
+          cache:
+            "no-store"
+        }
+      );
+
+    if (!response.ok) {
+      throw new Error(
+        `Search API returned ${response.status}`
+      );
     }
 
+    const payload =
+      await response.json();
 
-    const articles =
-        state.articles;
+    const normalized =
+      extractArticles(
+        payload
+      )
+        .map(
+          (
+            article,
+            index
+          ) =>
+            normalizeArticle(
+              article,
+              index
+            )
+        )
+        .filter(Boolean);
 
+    if (
+      !normalized.length
+    ) {
+      throw new Error(
+        "No matching articles returned."
+      );
+    }
 
-    if (!articles.length) {
+    state.articles =
+      normalized;
 
-        grid.innerHTML =
-            emptyState(
-                "??",
-                "No news available",
-                "Try refreshing the feed."
+    state.homeSearch =
+      "";
+
+    state.flashSearch =
+      "";
+
+    renderHome();
+
+    renderFlash();
+
+    showView(
+      "home"
+    );
+
+    showToast(
+      `${normalized.length} matching news stories found`
+    );
+
+  } catch (error) {
+
+    console.warn(
+      "Topic search failed; using local matching stories.",
+      error
+    );
+
+    const local =
+      allArticlesRaw()
+        .filter(
+          article =>
+            `
+              ${article.title}
+              ${article.description}
+              ${article.category}
+              ${article.source?.name || ""}
+            `
+              .toLowerCase()
+              .includes(
+                q.toLowerCase()
+              )
+        );
+
+    state.articles =
+      local.length
+        ? local
+            .map(
+              (
+                article,
+                index
+              ) =>
+                normalizeArticle(
+                  article,
+                  index
+                )
+            )
+            .filter(Boolean)
+        : fallbackArticles
+            .map(
+              normalizeArticle
+            )
+            .filter(
+              article =>
+                `
+                  ${article.title}
+                  ${article.description}
+                  ${article.category}
+                  ${article.source.name}
+                `
+                  .toLowerCase()
+                  .includes(
+                    q.toLowerCase()
+                  )
             );
 
-        return;
-    }
+    state.homeSearch =
+      "";
 
+    state.flashSearch =
+      "";
 
-    grid.innerHTML =
-        articles
-            .map(createNewsCard)
-            .join("");
+    renderHome();
+
+    renderFlash();
+
+    showView(
+      "home"
+    );
+
+    showToast(
+      "Live search is unavailable right now; showing matching backup stories."
+    );
+  }
 }
 
 
@@ -1282,37 +1890,386 @@ function renderFlash() {
 
 function renderExplain() {
 
-    const grid =
-        $("#explainGrid");
+  const grid =
+    $("#explainGrid");
+
+  if (!grid) {
+    return;
+  }
+
+  grid.innerHTML =
+    state.articles.length
+      ? state.articles
+          .map(
+            createNewsCard
+          )
+          .join("")
+      : emptyState(
+          "No explainers yet",
+          "Stories will appear here when news is available."
+        );
+}
 
 
-    if (!grid) {
+/* =========================================================
+   EXCITE
+========================================================= */
 
-        return;
-    }
+const exciteSeedArticles = [
+
+  {
+    id:
+      "excite-ai",
+
+    title:
+      "India's AI research is getting a stronger push",
+
+    description:
+      "New public and private initiatives are creating more space for young researchers, startups and deep-tech ideas.",
+
+    content:
+      "AI research and innovation are growing quickly across education, startups and public programs.",
+
+    url:
+      "https://indiaai.gov.in/",
+
+    image:
+      fallbackImages.technology,
+
+    publishedAt:
+      hoursAgo(2),
+
+    source:
+      {
+        name:
+          "IndiaAI"
+      },
+
+    category:
+      "Technology"
+  },
+
+  {
+    id:
+      "excite-space",
+
+    title:
+      "India's next space chapter is opening new doors",
+
+    description:
+      "Private launch systems, satellite technology and research missions are creating new technical opportunities.",
+
+    content:
+      "India's space ecosystem is expanding through public missions and a growing private sector.",
+
+    url:
+      "https://www.isro.gov.in/",
+
+    image:
+      fallbackImages.science,
+
+    publishedAt:
+      hoursAgo(3),
+
+    source:
+      {
+        name:
+          "ISRO"
+      },
+
+    category:
+      "Science"
+  },
+
+  {
+    id:
+      "excite-green",
+
+    title:
+      "Clean-energy innovation is moving closer to everyday life",
+
+    description:
+      "Solar, storage and smarter energy systems are creating new engineering and entrepreneurship opportunities.",
+
+    content:
+      "Clean-energy technology is becoming more practical and more connected to real-world products and infrastructure.",
+
+    url:
+      "https://mnre.gov.in/",
+
+    image:
+      fallbackImages.environment,
+
+    publishedAt:
+      hoursAgo(4),
+
+    source:
+      {
+        name:
+          "MNRE"
+      },
+
+    category:
+      "Environment"
+  },
+
+  {
+    id:
+      "excite-startup",
+
+    title:
+      "Student founders are building products around real problems",
+
+    description:
+      "Young builders are turning campus problems into tools for education, productivity and small businesses.",
+
+    content:
+      "Student entrepreneurship is increasingly focused on validating useful products instead of only pitching ideas.",
+
+    url:
+      "https://www.startupindia.gov.in/",
+
+    image:
+      fallbackImages.startups,
+
+    publishedAt:
+      hoursAgo(6),
+
+    source:
+      {
+        name:
+          "Startup India"
+      },
+
+    category:
+      "Startups"
+  },
+
+  {
+    id:
+      "excite-gaming",
+
+    title:
+      "Game creation tools are opening the door to more creators",
+
+    description:
+      "Modern engines and creator platforms make it easier to experiment with interactive experiences.",
+
+    content:
+      "Accessible development tools mean students can prototype games and interactive projects with smaller teams.",
+
+    url:
+      "https://unity.com/learn",
+
+    image:
+      fallbackImages.gaming,
+
+    publishedAt:
+      hoursAgo(8),
+
+    source:
+      {
+        name:
+          "Unity Learn"
+      },
+
+    category:
+      "Gaming"
+  },
+
+  {
+    id:
+      "excite-education",
+
+    title:
+      "Coding is becoming a stronger everyday skill",
+
+    description:
+      "More students are learning to code not just for jobs, but to solve practical problems and build projects.",
+
+    content:
+      "Coding skills can support experimentation, automation and product building across many fields.",
+
+    url:
+      "https://www.education.gov.in/",
+
+    image:
+      fallbackImages.education,
+
+    publishedAt:
+      hoursAgo(10),
+
+    source:
+      {
+        name:
+          "Education Ministry"
+      },
+
+    category:
+      "Education"
+  }
+];
 
 
-    const articles =
-        state.articles.slice(0, 12);
+function getExciteArticles() {
+
+  return [
+    ...exciteSeedArticles.map(
+      article => ({
+        ...article,
+        isFallback: true
+      })
+    ),
+
+    ...state.articles
+  ]
+    .map(
+      normalizeArticle
+    )
+    .filter(Boolean)
+    .slice(
+      0,
+      6
+    );
+}
 
 
-    if (!articles.length) {
+function renderExcite() {
 
-        grid.innerHTML =
-            emptyState(
-                "??",
-                "No explainers yet",
-                "Stories will appear here when news is available."
-            );
+  const grid =
+    $("#exciteStoryGrid");
 
-        return;
-    }
+  if (!grid) {
+    return;
+  }
+
+  grid.innerHTML =
+    getExciteArticles()
+      .map(
+        article =>
+          createNewsCard(
+            article,
+            "excite-card"
+          )
+      )
+      .join("");
+}
 
 
-    grid.innerHTML =
-        articles
-            .map(createNewsCard)
-            .join("");
+/* =========================================================
+   OPPORTUNITIES
+========================================================= */
+
+function renderOpportunities() {
+
+  const grid =
+    $("#opportunityGrid");
+
+  if (!grid) {
+    return;
+  }
+
+  grid.innerHTML =
+    opportunityData
+      .map(
+        item => {
+
+          const article =
+            findArticle(
+              item.article
+            ) ||
+            fallbackArticles[0];
+
+          return `
+            <article
+              class="opportunity-card ${item.type
+                .toLowerCase()
+                .split(" ")[0]}"
+            >
+
+              <div class="opportunity-icon">
+                ${item.icon}
+              </div>
+
+              <span class="opportunity-type">
+                ${escapeHtml(
+                  item.type
+                )}
+              </span>
+
+              <h2>
+                ${escapeHtml(
+                  item.title
+                )}
+              </h2>
+
+              <p>
+                ${escapeHtml(
+                  item.description
+                )}
+              </p>
+
+              <div class="opportunity-meta">
+
+                ${item.meta
+                  .map(
+                    meta =>
+                      `
+                        <span>
+                          ${escapeHtml(
+                            meta
+                          )}
+                        </span>
+                      `
+                  )
+                  .join("")}
+
+              </div>
+
+              <div class="opportunity-tools">
+
+                <button
+                  class="ai-btn"
+                  data-id="${escapeHtml(
+                    article.id
+                  )}"
+                  data-ai-type="summary"
+                  type="button"
+                >
+                  AI Summary
+                </button>
+
+                <button
+                  class="ai-btn"
+                  data-id="${escapeHtml(
+                    article.id
+                  )}"
+                  data-ai-type="explain"
+                  type="button"
+                >
+                  AI Explanation
+                </button>
+
+                <a
+                  class="opportunity-btn"
+                  href="${escapeHtml(
+                    item.url
+                  )}"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  ${escapeHtml(
+                    item.action
+                  )} â†’
+                </a>
+
+              </div>
+
+            </article>
+          `;
+        }
+      )
+      .join("");
 }
 
 
@@ -1322,1084 +2279,32 @@ function renderExplain() {
 
 function renderSaved() {
 
-    const grid =
-        $("#savedGrid");
+  const grid =
+    $("#savedGrid");
 
+  if (!grid) {
+    return;
+  }
 
-    if (!grid) {
+  const items =
+    state.savedIds
+      .map(
+        id =>
+          findArticle(id)
+      )
+      .filter(Boolean);
 
-        return;
-    }
-
-
-    const articles =
-        state.articles.filter(
-            article =>
-                state.savedIds.includes(
-                    article.id
-                )
+  grid.innerHTML =
+    items.length
+      ? items
+          .map(
+            createNewsCard
+          )
+          .join("")
+      : emptyState(
+          "Nothing saved yet",
+          "Use Save story on any content card and it will appear here."
         );
-
-
-    if (!articles.length) {
-
-        grid.innerHTML =
-            emptyState(
-                "??",
-                "Nothing saved yet",
-                "Tap ? Save on a story to keep it here."
-            );
-
-        return;
-    }
-
-
-    grid.innerHTML =
-        articles
-            .map(createNewsCard)
-            .join("");
-}
-
-
-/* =========================================================
-   EMPTY STATE
-========================================================= */
-
-function emptyState(
-    icon,
-    title,
-    description
-) {
-
-    return `
-        <div class="empty-state">
-
-            <div class="empty-icon">
-                ${icon}
-            </div>
-
-            <h3>
-                ${escapeHtml(title)}
-            </h3>
-
-            <p>
-                ${escapeHtml(description)}
-            </p>
-
-        </div>
-    `;
-}
-
-
-/* =========================================================
-   SAVE ARTICLE
-========================================================= */
-
-function toggleSave(id) {
-
-    const index =
-        state.savedIds.indexOf(id);
-
-
-    if (index === -1) {
-
-        state.savedIds.push(id);
-
-        showToast(
-            "Story saved ??"
-        );
-
-    } else {
-
-        state.savedIds.splice(index, 1);
-
-        showToast(
-            "Removed from Saved"
-        );
-    }
-
-
-    saveSavedIds();
-
-
-    renderHome();
-    renderFlash();
-    renderExplain();
-    renderSaved();
-    renderSwiping();
-    renderBlindspot();
-}
-
-
-/* =========================================================
-   FIND ARTICLE
-========================================================= */
-
-function findArticle(id) {
-
-    return state.articles.find(
-        article =>
-            String(article.id) === String(id)
-    );
-}
-
-
-/* =========================================================
-   READ ARTICLE
-========================================================= */
-
-function readArticle(id) {
-
-    const article =
-        findArticle(id);
-
-
-    if (!article) {
-
-        showToast(
-            "Article not found."
-        );
-
-        return;
-    }
-
-
-    if (!article.url) {
-
-        showToast(
-            "Full article link is not available for this story."
-        );
-
-        return;
-    }
-
-
-    window.open(
-        article.url,
-        "_blank",
-        "noopener,noreferrer"
-    );
-}
-
-
-/* =========================================================
-   AI FALLBACK SUMMARY
-========================================================= */
-
-function createLocalSummary(article) {
-
-    const description =
-        article.description ||
-        "This story explains a recent development.";
-
-
-    return `
-AI Generated Summary
-
-${description}
-
-Why it matters:
-This story is relevant because it describes a development that may affect technology, society, students, business or everyday life.
-
-Source:
-${article.source.name}
-
-Published:
-${timeAgo(article.publishedAt)}
-`;
-}
-
-
-/* =========================================================
-   GEN Z EXPLAIN
-========================================================= */
-
-function createLocalExplain(article) {
-
-    const category =
-        article.category;
-
-
-    return `
-Gen Z Explain
-
-What's happening?
-
-${article.description}
-
-In simple words:
-This headline is basically about a new development in ${category.toLowerCase()}.
-
-Why should you care?
-
-The important thing is not just the headline. The development can create changes, opportunities, risks or new conversations around the topic.
-
-Quick takeaway:
-Know the basic idea first, then read the full article if it matters to you.
-`;
-}
-
-
-/* =========================================================
-   OPEN AI MODAL
-========================================================= */
-
-async function openAiModal(
-    article,
-    type
-) {
-
-    if (!article) {
-
-        return;
-    }
-
-
-    const modal =
-        $("#aiModal");
-
-    const title =
-        $("#modalTitle");
-
-    const label =
-        $("#modalLabel");
-
-    const icon =
-        $("#modalIcon");
-
-    const content =
-        $("#modalContent");
-
-
-    modal.classList.remove("hidden");
-
-
-    if (type === "summary") {
-
-        icon.textContent = "??";
-
-        label.textContent =
-            "AI GENERATED SUMMARY";
-
-        title.textContent =
-            "Quick Summary";
-
-        content.textContent =
-            createLocalSummary(article);
-
-    } else {
-
-        icon.textContent = "??";
-
-        label.textContent =
-            "GEN Z EXPLAIN";
-
-        title.textContent =
-            "Explained Simply";
-
-        content.textContent =
-            createLocalExplain(article);
-    }
-
-
-    /*
-       Try backend AI endpoint.
-
-       If it doesn't exist, local explanation remains.
-    */
-
-    try {
-
-        const endpoint =
-            AI_ENDPOINTS[type];
-
-
-        const response =
-            await fetch(
-                endpoint,
-                {
-                    method: "POST",
-
-                    headers: {
-                        "Content-Type":
-                            "application/json"
-                    },
-
-                    body: JSON.stringify({
-                        article: {
-                            title:
-                                article.title,
-
-                            description:
-                                article.description,
-
-                            content:
-                                article.content,
-
-                            source:
-                                article.source.name
-                        }
-                    })
-                }
-            );
-
-
-        if (!response.ok) {
-
-            return;
-        }
-
-
-        const data =
-            await response.json();
-
-
-        const aiText =
-            data.summary ||
-            data.explanation ||
-            data.text ||
-            data.result ||
-            data.message;
-
-
-        if (aiText) {
-
-            content.textContent =
-                aiText;
-        }
-
-
-    } catch {
-
-        /*
-           Backend AI endpoint may not exist yet.
-
-           Local fallback is already displayed.
-        */
-    }
-}
-
-
-/* =========================================================
-   CLOSE MODAL
-========================================================= */
-
-function closeModal() {
-
-    const modal =
-        $("#aiModal");
-
-    if (modal) {
-
-        modal.classList.add(
-            "hidden"
-        );
-    }
-}
-
-
-/* =========================================================
-   BLINDSPOT LOGIC
-========================================================= */
-
-function isBlindspotArticle(article) {
-
-    const category =
-        normalizeCategory(article);
-
-
-    return state.blindspotCategories.some(
-        selected =>
-            categoryKey(selected) ===
-            categoryKey(category)
-    );
-}
-
-
-function getBlindspotArticles() {
-
-    const realBlindspots =
-        state.articles.filter(
-            isBlindspotArticle
-        );
-
-
-    /*
-       Add guaranteed backup stories if needed.
-    */
-
-    const combined = [
-        ...realBlindspots,
-        ...fallbackBlindspotArticles
-    ];
-
-
-    /*
-       Remove duplicates.
-    */
-
-    const unique = [];
-
-    const ids = new Set();
-
-
-    for (const article of combined) {
-
-        if (!ids.has(article.id)) {
-
-            ids.add(article.id);
-
-            unique.push(article);
-        }
-    }
-
-
-    return unique;
-}
-
-
-function getSwipingArticles() {
-
-    const normal =
-        state.articles.filter(
-            article =>
-                !isBlindspotArticle(article)
-        );
-
-
-    /*
-       If everything was filtered out,
-       use the normal articles.
-    */
-
-    return normal.length
-        ? normal
-        : state.articles;
-}
-
-
-/* =========================================================
-   SWIPE CARD
-========================================================= */
-
-function createSwipeCard(
-    article,
-    index,
-    activeIndex
-) {
-
-    const saved =
-        state.savedIds.includes(
-            article.id
-        );
-
-
-    const active =
-        index === activeIndex;
-
-
-    const image =
-        article.image
-
-            ? `
-                <img
-                    src="${escapeHtml(article.image)}"
-                    alt=""
-                    draggable="false"
-                    onerror="this.style.display='none'; this.nextElementSibling.style.display='grid';"
-                >
-
-                <div
-                    class="swipe-placeholder"
-                    style="display:none"
-                >
-                    ${categoryIcon(article.category)}
-                </div>
-            `
-
-            : `
-                <div class="swipe-placeholder">
-                    ${categoryIcon(article.category)}
-                </div>
-            `;
-
-
-    return `
-        <article
-            class="swipe-card ${active ? "active" : ""}"
-            data-swipe-index="${index}"
-            data-id="${escapeHtml(article.id)}"
-        >
-
-            <div class="swipe-media">
-
-                ${image}
-
-                <span class="swipe-overlay-category">
-                    ${categoryIcon(article.category)}
-                    ${escapeHtml(article.category)}
-                </span>
-
-                <span class="swipe-media-time">
-                    ${timeAgo(article.publishedAt)}
-                </span>
-
-            </div>
-
-
-            <div class="swipe-body">
-
-                <div class="swipe-source">
-                    ${escapeHtml(article.source.name)}
-                </div>
-
-
-                <h2 class="swipe-title">
-                    ${escapeHtml(article.title)}
-                </h2>
-
-
-                <p class="swipe-description">
-                    ${escapeHtml(article.description)}
-                </p>
-
-
-                <div class="swipe-actions">
-
-                    <button
-                        class="swipe-action ai ai-btn"
-                        data-id="${escapeHtml(article.id)}"
-                        data-ai-type="summary"
-                    >
-                        ?? AI Generated<br>
-                        Summary
-                    </button>
-
-
-                    <button
-                        class="swipe-action explain ai-btn"
-                        data-id="${escapeHtml(article.id)}"
-                        data-ai-type="explain"
-                    >
-                        ?? Gen Z<br>
-                        Explain
-                    </button>
-
-
-                    <button
-                        class="swipe-action read article-read"
-                        data-id="${escapeHtml(article.id)}"
-                    >
-                        ?? Read Full<br>
-                        Article
-                    </button>
-
-                </div>
-
-
-                <div class="swipe-secondary-actions">
-
-                    <button type="button" class="save ${saved ? "active" : ""}" data-id="${escapeHtml(article.id)}" onclick="toggleSave(this.dataset.id); event.stopPropagation();">
-                        ${saved ? "? Saved" : "? Save"}
-                    </button>
-
-
-                    <button
-                        class="not-interested"
-                        data-id="${escapeHtml(article.id)}"
-                    >
-                        ?? Not interested
-                    </button>
-
-                </div>
-
-            </div>
-
-        </article>
-    `;
-}
-
-
-/* =========================================================
-   RENDER SWIPING
-========================================================= */
-
-function renderSwiping() {
-
-    const deck =
-        $("#swipeStage");
-
-    const counter =
-        $(".swipe-counter");
-
-
-    if (!deck) {
-
-        return;
-    }
-
-
-    const articles =
-        getSwipingArticles();
-
-
-    if (!articles.length) {
-
-        deck.innerHTML =
-            emptyState(
-                "??",
-                "No stories",
-                "There are no stories to swipe right now."
-            );
-
-        if (counter) {
-
-            counter.textContent = "0 / 0";
-        }
-
-        return;
-    }
-
-
-    if (
-        state.swipingIndex >=
-        articles.length
-    ) {
-
-        state.swipingIndex = 0;
-    }
-
-
-    /*
-       Only render a few cards around the current card.
-       This makes the deck feel like a social app.
-    */
-
-    const visible = [];
-
-
-    for (
-        let offset = 0;
-        offset < 3;
-        offset++
-    ) {
-
-        const index =
-            (
-                state.swipingIndex +
-                offset
-            ) % articles.length;
-
-
-        visible.push(
-            createSwipeCard(
-                articles[index],
-                offset,
-                0
-            )
-        );
-    }
-
-
-    deck.innerHTML =
-        visible.reverse().join("");
-
-
-    if (counter) {
-
-        counter.textContent =
-            `${state.swipingIndex + 1} / ${articles.length}`;
-    }
-
-
-    setupSwipeGesture(
-        deck,
-        "swiping"
-    );
-}
-
-
-/* =========================================================
-   RENDER BLINDSPOT
-========================================================= */
-
-function renderBlindspot() {
-
-    const deck =
-        $("#blindspotView .news-grid");
-
-
-    if (!deck) {
-
-        return;
-    }
-
-
-    const articles =
-        getBlindspotArticles();
-
-
-    if (!articles.length) {
-
-        deck.innerHTML =
-            emptyState(
-                "???",
-                "Blindspot is empty",
-                "Choose some topics in Radar."
-            );
-
-        return;
-    }
-
-
-    if (
-        state.blindspotIndex >=
-        articles.length
-    ) {
-
-        state.blindspotIndex = 0;
-    }
-
-
-    const visible = [];
-
-
-    for (
-        let offset = 0;
-        offset < 3;
-        offset++
-    ) {
-
-        const index =
-            (
-                state.blindspotIndex +
-                offset
-            ) % articles.length;
-
-
-        visible.push(
-            createSwipeCard(
-                articles[index],
-                offset,
-                0
-            )
-        );
-    }
-
-
-    deck.innerHTML =
-        visible.reverse().join("");
-
-
-    setupSwipeGesture(
-        deck,
-        "blindspot"
-    );
-}
-
-
-/* =========================================================
-   NEXT / PREVIOUS
-========================================================= */
-
-function nextSwiping() {
-
-    const articles =
-        getSwipingArticles();
-
-
-    if (!articles.length) {
-
-        return;
-    }
-
-
-    state.swipingIndex =
-        (
-            state.swipingIndex + 1
-        ) % articles.length;
-
-
-    renderSwiping();
-}
-
-
-function previousSwiping() {
-
-    const articles =
-        getSwipingArticles();
-
-
-    if (!articles.length) {
-
-        return;
-    }
-
-
-    state.swipingIndex =
-        (
-            state.swipingIndex - 1 +
-            articles.length
-        ) % articles.length;
-
-
-    renderSwiping();
-}
-
-
-function nextBlindspot() {
-
-    const articles =
-        getBlindspotArticles();
-
-
-    if (!articles.length) {
-
-        return;
-    }
-
-
-    state.blindspotIndex =
-        (
-            state.blindspotIndex + 1
-        ) % articles.length;
-
-
-    renderBlindspot();
-}
-
-
-function previousBlindspot() {
-
-    const articles =
-        getBlindspotArticles();
-
-
-    if (!articles.length) {
-
-        return;
-    }
-
-
-    state.blindspotIndex =
-        (
-            state.blindspotIndex - 1 +
-            articles.length
-        ) % articles.length;
-
-
-    renderBlindspot();
-}
-
-
-/* =========================================================
-   SWIPE GESTURE
-========================================================= */
-
-function setupSwipeGesture(
-    deck,
-    type
-) {
-
-    const activeCard =
-        deck.querySelector(
-            ".swipe-card.active"
-        );
-
-
-    if (!activeCard) {
-
-        return;
-    }
-
-
-    let startX = 0;
-
-    let currentX = 0;
-
-    let dragging = false;
-
-
-    activeCard.addEventListener(
-        "pointerdown",
-        event => {
-
-            /*
-               Don't start dragging if user clicked
-               a button or link.
-            */
-
-            if (
-                event.target.closest(
-                    "button, a"
-                )
-            ) {
-
-                return;
-            }
-
-
-            dragging = true;
-
-            startX =
-                event.clientX;
-
-            currentX =
-                startX;
-
-            activeCard.classList.add(
-                "dragging"
-            );
-
-            activeCard.setPointerCapture(
-                event.pointerId
-            );
-        }
-    );
-
-
-    activeCard.addEventListener(
-        "pointermove",
-        event => {
-
-            if (!dragging) {
-
-                return;
-            }
-
-
-            currentX =
-                event.clientX;
-
-
-            const diff =
-                currentX - startX;
-
-
-            activeCard.style.transform =
-                `translateX(${diff}px) rotate(${diff / 18}deg)`;
-        }
-    );
-
-
-    activeCard.addEventListener(
-        "pointerup",
-        event => {
-
-            if (!dragging) {
-
-                return;
-            }
-
-
-            dragging = false;
-
-            const diff =
-                currentX - startX;
-
-
-            activeCard.classList.remove(
-                "dragging"
-            );
-
-
-            if (Math.abs(diff) > 100) {
-
-                if (type === "swiping") {
-
-                    if (diff < 0) {
-
-                        nextSwiping();
-
-                    } else {
-
-                        previousSwiping();
-                    }
-
-                } else {
-
-                    if (diff < 0) {
-
-                        nextBlindspot();
-
-                    } else {
-
-                        previousBlindspot();
-                    }
-                }
-
-            } else {
-
-                activeCard.style.transform =
-                    "";
-            }
-        }
-    );
-
-
-    activeCard.addEventListener(
-        "pointercancel",
-        () => {
-
-            dragging = false;
-
-            activeCard.classList.remove(
-                "dragging"
-            );
-
-            activeCard.style.transform =
-                "";
-        }
-    );
-}
-
-
-/* =========================================================
-   NOT INTERESTED
-========================================================= */
-
-function markNotInterested(id) {
-
-    const article =
-        findArticle(id);
-
-
-    if (!article) {
-
-        return;
-    }
-
-
-    const category =
-        normalizeCategory(article);
-
-
-    if (
-        !state.blindspotCategories.some(
-            existing =>
-                categoryKey(existing) ===
-                categoryKey(category)
-        )
-    ) {
-
-        state.blindspotCategories.push(
-            category
-        );
-
-        saveBlindspotCategories();
-    }
-
-
-    showToast(
-        `${category} added to Blindspot Feed`
-    );
-
-
-    state.swipingIndex = 0;
-
-    renderSwiping();
-    renderBlindspot();
-    renderRadar();
 }
 
 
@@ -2409,197 +2314,1141 @@ function markNotInterested(id) {
 
 function renderRadar() {
 
-    const container =
-        $("#interestControls");
+  const controls =
+    $("#interestControls");
 
+  if (controls) {
 
-    if (!container) {
+    controls.innerHTML =
+      availableCategories
+        .map(
+          category => {
 
-        return;
-    }
+            const active =
+              state.blindspotCategories
+                .some(
+                  item =>
+                    categoryKey(
+                      item
+                    ) ===
+                    categoryKey(
+                      category
+                    )
+                );
 
+            return `
+              <button
+                class="interest-btn ${
+                  active
+                    ? "active"
+                    : ""
+                }"
+                data-category="${escapeHtml(
+                  category
+                )}"
+                type="button"
+              >
+                ${escapeHtml(
+                  category
+                )}
 
-    container.innerHTML =
-        availableCategories
-            .map(category => {
+                ${
+                  active
+                    ? " âœ“"
+                    : ""
+                }
+              </button>
+            `;
+          }
+        )
+        .join("");
+  }
 
-                const active =
-                    state.blindspotCategories.some(
-                        selected =>
-                            categoryKey(selected) ===
-                            categoryKey(category)
-                    );
+  const grid =
+    $("#radarGrid");
 
+  if (grid) {
 
-                return `
-                    <button
-                        class="interest-btn ${active ? "active" : ""}"
-                        data-category="${escapeHtml(category)}"
-                    >
-                        ${categoryIcon(category)}
-                        ${escapeHtml(category)}
-                        ${active ? " ?" : ""}
-                    </button>
-                `;
-            })
-            .join("");
-}
-
-
-function toggleBlindspotCategory(
-    category
-) {
-
-    const index =
-        state.blindspotCategories.findIndex(
-            selected =>
-                categoryKey(selected) ===
-                categoryKey(category)
+    const items =
+      state.articles
+        .filter(
+          article =>
+            state.blindspotCategories
+              .some(
+                category =>
+                  categoryKey(
+                    category
+                  ) ===
+                  categoryKey(
+                    article.category
+                  )
+              )
+        )
+        .slice(
+          0,
+          6
         );
 
-
-    if (index === -1) {
-
-        state.blindspotCategories.push(
-            category
-        );
-
-    } else {
-
-        state.blindspotCategories.splice(
-            index,
-            1
-        );
-    }
-
-
-    saveBlindspotCategories();
-
-
-    state.blindspotIndex = 0;
-    state.swipingIndex = 0;
-
-
-    renderRadar();
-    renderSwiping();
-    renderBlindspot();
-
-
-    showToast(
-        index === -1
-            ? `${category} added to Blindspot`
-            : `${category} removed from Blindspot`
-    );
-}
-
-
-function resetRadar() {
-
-    state.blindspotCategories = [
-        "Sports",
-        "Gaming",
-        "Entertainment"
-    ];
-
-
-    saveBlindspotCategories();
-
-
-    state.swipingIndex = 0;
-    state.blindspotIndex = 0;
-
-
-    renderRadar();
-    renderSwiping();
-    renderBlindspot();
-
-
-    showToast(
-        "Radar preferences reset"
-    );
+    grid.innerHTML =
+      items.length
+        ? items
+            .map(
+              createNewsCard
+            )
+            .join("")
+        : emptyState(
+            "Your radar is ready",
+            "Choose topics above to see stories from your current radar mix."
+          );
+  }
 }
 
 
 /* =========================================================
-   NAVIGATION
+   SWIPING
 ========================================================= */
 
-function showView(viewName) {
+function getSwipingArticles() {
 
-    const target =
-        document.getElementById(
-            `${viewName}View`
-        );
-
-
-    if (!target) {
-
-        console.warn(
-            `View not found: ${viewName}`
-        );
-
-        return;
-    }
+  return state.articles.length
+    ? state.articles
+    : [];
+}
 
 
-    $all(".view").forEach(view => {
+function getBlindspotArticles() {
 
-        view.classList.remove(
-            "active"
-        );
-    });
-
-
-    target.classList.add(
-        "active"
+  const selected =
+    state.articles.filter(
+      article =>
+        state.blindspotCategories
+          .some(
+            category =>
+              categoryKey(
+                category
+              ) ===
+              categoryKey(
+                article.category
+              )
+          )
     );
 
+  if (selected.length) {
+    return selected;
+  }
 
-    $all(".nav-btn").forEach(btn => {
+  return blindspotFallback.filter(
+    article =>
+      state.blindspotCategories
+        .some(
+          category =>
+            categoryKey(
+              category
+            ) ===
+            categoryKey(
+              article.category
+            )
+        )
+  );
+}
 
-        btn.classList.toggle(
-            "active",
-            btn.dataset.view === viewName
+
+function createSwipeCard(
+  article,
+  index
+) {
+
+  const image =
+    article.image
+      ? `
+        <img
+          src="${escapeHtml(
+            article.image
+          )}"
+          alt=""
+          draggable="false"
+        >
+      `
+      : `
+        <div class="swipe-placeholder">
+          ${categoryIcon(
+            article.category
+          )}
+        </div>
+      `;
+
+  return `
+    <article
+      class="swipe-card ${
+        index === 0
+          ? "active"
+          : ""
+      }"
+      data-swipe-id="${escapeHtml(
+        article.id
+      )}"
+    >
+
+      <div class="swipe-media">
+
+        ${image}
+
+        <span class="swipe-overlay-category">
+          ${escapeHtml(
+            article.category
+          )}
+        </span>
+
+        <span class="swipe-media-time">
+          ${escapeHtml(
+            timeAgo(
+              article.publishedAt
+            )
+          )}
+        </span>
+
+      </div>
+
+      <div class="swipe-body">
+
+        <span class="swipe-source">
+          ${escapeHtml(
+            article.source.name
+          )}
+        </span>
+
+        <h2 class="swipe-title">
+          ${escapeHtml(
+            article.title
+          )}
+        </h2>
+
+        <p class="swipe-description">
+          ${escapeHtml(
+            article.description
+          )}
+        </p>
+
+        ${actionButtons(
+          article
+        )}
+
+        <div class="swipe-secondary-actions">
+
+          <button
+            class="not-interested"
+            data-id="${escapeHtml(
+              article.id
+            )}"
+            type="button"
+          >
+            Not interested
+          </button>
+
+          <button
+            class="save ${
+              state.savedIds.includes(
+                String(article.id)
+              )
+                ? "active"
+                : ""
+            }"
+            data-id="${escapeHtml(
+              article.id
+            )}"
+            type="button"
+          >
+            ${
+              state.savedIds.includes(
+                String(article.id)
+              )
+                ? "Saved"
+                : "Save"
+            }
+          </button>
+
+        </div>
+
+      </div>
+
+    </article>
+  `;
+}
+
+
+function renderSwiping() {
+
+  const deck =
+    $("#swipeStage");
+
+  if (!deck) {
+    return;
+  }
+
+  const list =
+    getSwipingArticles();
+
+  const counter =
+    $("#swipeCounter");
+
+  if (!list.length) {
+
+    deck.innerHTML =
+      emptyState(
+        "No stories to swipe",
+        "Refresh the feed to load more stories."
+      );
+
+    if (counter) {
+      counter.textContent =
+        "0 / 0";
+    }
+
+    return;
+  }
+
+  state.swipingIndex =
+    (
+      state.swipingIndex %
+      list.length +
+      list.length
+    ) %
+    list.length;
+
+  const cards = [];
+
+  for (
+    let i =
+      Math.min(
+        2,
+        list.length - 1
+      );
+    i >= 0;
+    i--
+  ) {
+
+    cards.push(
+      createSwipeCard(
+        list[
+          (
+            state.swipingIndex +
+            i
+          ) %
+            list.length
+        ],
+        i === 0
+          ? 0
+          : i
+      )
+    );
+  }
+
+  deck.innerHTML =
+    cards.join("");
+
+  if (counter) {
+
+    counter.textContent =
+      `${state.swipingIndex + 1} / ${list.length}`;
+  }
+
+  setupSwipeGesture(
+    deck,
+    "swiping"
+  );
+}
+
+
+function renderBlindspot() {
+
+  const deck =
+    $("#blindspotDeck");
+
+  if (!deck) {
+    return;
+  }
+
+  const list =
+    getBlindspotArticles();
+
+  if (!list.length) {
+
+    deck.innerHTML =
+      emptyState(
+        "Blindspot is empty",
+        "Choose some topics in Radar."
+      );
+
+    return;
+  }
+
+  state.blindspotIndex =
+    (
+      state.blindspotIndex %
+      list.length +
+      list.length
+    ) %
+    list.length;
+
+  const cards = [];
+
+  for (
+    let i =
+      Math.min(
+        2,
+        list.length - 1
+      );
+    i >= 0;
+    i--
+  ) {
+
+    cards.push(
+      createSwipeCard(
+        list[
+          (
+            state.blindspotIndex +
+            i
+          ) %
+            list.length
+        ],
+        i === 0
+          ? 0
+          : i
+      )
+    );
+  }
+
+  deck.innerHTML =
+    cards.join("");
+
+  setupSwipeGesture(
+    deck,
+    "blindspot"
+  );
+}
+
+
+function nextSwiping() {
+
+  const list =
+    getSwipingArticles();
+
+  if (!list.length) {
+    return;
+  }
+
+  state.swipingIndex =
+    (
+      state.swipingIndex +
+      1
+    ) %
+    list.length;
+
+  renderSwiping();
+}
+
+
+function previousSwiping() {
+
+  const list =
+    getSwipingArticles();
+
+  if (!list.length) {
+    return;
+  }
+
+  state.swipingIndex =
+    (
+      state.swipingIndex -
+      1 +
+      list.length
+    ) %
+    list.length;
+
+  renderSwiping();
+}
+
+
+function nextBlindspot() {
+
+  const list =
+    getBlindspotArticles();
+
+  if (!list.length) {
+    return;
+  }
+
+  state.blindspotIndex =
+    (
+      state.blindspotIndex +
+      1
+    ) %
+    list.length;
+
+  renderBlindspot();
+}
+
+
+function previousBlindspot() {
+
+  const list =
+    getBlindspotArticles();
+
+  if (!list.length) {
+    return;
+  }
+
+  state.blindspotIndex =
+    (
+      state.blindspotIndex -
+      1 +
+      list.length
+    ) %
+    list.length;
+
+  renderBlindspot();
+}
+
+
+function setupSwipeGesture(
+  deck,
+  type
+) {
+
+  const active =
+    deck.querySelector(
+      ".swipe-card.active"
+    );
+
+  if (!active) {
+    return;
+  }
+
+  let startX = 0;
+  let currentX = 0;
+  let dragging = false;
+
+  active.addEventListener(
+    "pointerdown",
+    event => {
+
+      if (
+        event.target.closest(
+          "button,a"
+        )
+      ) {
+        return;
+      }
+
+      dragging = true;
+
+      startX =
+        currentX =
+        event.clientX;
+
+      active.classList.add(
+        "dragging"
+      );
+
+      active.setPointerCapture?.(
+        event.pointerId
+      );
+    }
+  );
+
+  active.addEventListener(
+    "pointermove",
+    event => {
+
+      if (!dragging) {
+        return;
+      }
+
+      currentX =
+        event.clientX;
+
+      const distance =
+        currentX -
+        startX;
+
+      active.style.transform =
+        `translateX(${distance}px) rotate(${distance / 18}deg)`;
+    }
+  );
+
+  active.addEventListener(
+    "pointerup",
+    () => {
+
+      if (!dragging) {
+        return;
+      }
+
+      dragging = false;
+
+      const distance =
+        currentX -
+        startX;
+
+      active.classList.remove(
+        "dragging"
+      );
+
+      if (
+        Math.abs(distance) >
+        95
+      ) {
+
+        if (
+          type ===
+          "swiping"
+        ) {
+
+          distance < 0
+            ? nextSwiping()
+            : previousSwiping();
+
+        } else {
+
+          distance < 0
+            ? nextBlindspot()
+            : previousBlindspot();
+        }
+
+      } else {
+
+        active.style.transform =
+          "";
+      }
+    }
+  );
+
+  active.addEventListener(
+    "pointercancel",
+    () => {
+
+      dragging = false;
+
+      active.classList.remove(
+        "dragging"
+      );
+
+      active.style.transform =
+        "";
+    }
+  );
+}
+
+
+/* =========================================================
+   CLOUD SAVE / REMOVE
+========================================================= */
+
+async function toggleSave(
+  id
+) {
+
+  const key =
+    String(id);
+
+  const article =
+    findArticle(key);
+
+  if (!article) {
+    return;
+  }
+
+
+  /* =======================================================
+     NOT SIGNED IN
+     Browser-only save
+  ======================================================= */
+
+  if (!state.user?.id) {
+
+    if (
+      state.savedIds.includes(
+        key
+      )
+    ) {
+
+      state.savedIds =
+        state.savedIds.filter(
+          item =>
+            String(item) !==
+            key
         );
-    });
+
+      state.savedArticles =
+        state.savedArticles.filter(
+          savedArticle =>
+            String(
+              savedArticle.id
+            ) !==
+            key
+        );
+
+      showToast(
+        "Removed from Saved"
+      );
+
+    } else {
+
+      state.savedIds.push(
+        key
+      );
+
+      state.savedArticles = [
+        ...state.savedArticles.filter(
+          savedArticle =>
+            String(
+              savedArticle.id
+            ) !==
+            key
+        ),
+
+        article
+      ];
+
+      showToast(
+        "Story saved in this browser"
+      );
+    }
+
+    saveSavedState();
+
+    renderEverything();
+
+    return;
+  }
 
 
-    state.currentView =
-        viewName;
+  /* =======================================================
+     SIGNED IN
+     CLOUD SAVE / REMOVE
+  ======================================================= */
 
+  try {
 
-    /*
-       Re-render special views whenever opened.
-    */
+    /* =====================================================
+       REMOVE FROM CLOUD
+    ===================================================== */
 
-    if (viewName === "swiping") {
+    if (
+      state.savedIds.includes(
+        key
+      )
+    ) {
 
-        renderSwiping();
+      const response =
+        await fetch(
+          `${SAVED_API}/${encodeURIComponent(
+            state.user.id
+          )}`,
+          {
+            method:
+              "DELETE",
+
+            headers: {
+              "Content-Type":
+                "application/json"
+            },
+
+            body:
+              JSON.stringify({
+                story:
+                  article
+              })
+          }
+        );
+
+      const data =
+        await response
+          .json()
+          .catch(
+            () => ({})
+          );
+
+      if (
+        !response.ok ||
+        !data.success
+      ) {
+        throw new Error(
+          data.message ||
+          "Unable to remove the saved story."
+        );
+      }
+
+      state.savedArticles =
+        (
+          data.savedStories ||
+          []
+        )
+          .map(
+            (
+              saved,
+              index
+            ) =>
+              normalizeArticle(
+                saved,
+                index
+              )
+          )
+          .filter(Boolean);
+
+      state.savedIds =
+        state.savedArticles.map(
+          saved =>
+            String(
+              saved.id
+            )
+        );
+
+      saveSavedState();
+
+      renderEverything();
+
+      showToast(
+        "Removed from Saved"
+      );
+
+      return;
     }
 
 
-    if (viewName === "blindspot") {
+    /* =====================================================
+       SAVE TO CLOUD
+    ===================================================== */
 
-        renderBlindspot();
+    const response =
+      await fetch(
+        SAVE_STORY_API,
+        {
+          method:
+            "POST",
+
+          headers: {
+            "Content-Type":
+              "application/json"
+          },
+
+          body:
+            JSON.stringify({
+              userId:
+                state.user.id,
+
+              story:
+                article
+            })
+        }
+      );
+
+    const data =
+      await response
+        .json()
+        .catch(
+          () => ({})
+        );
+
+    if (
+      !response.ok ||
+      !data.success
+    ) {
+      throw new Error(
+        data.message ||
+        "Unable to save the story."
+      );
     }
 
+    state.savedArticles =
+      (
+        data.savedStories ||
+        []
+      )
+        .map(
+          (
+            saved,
+            index
+          ) =>
+            normalizeArticle(
+              saved,
+              index
+            )
+        )
+        .filter(Boolean);
 
-    if (viewName === "saved") {
+    state.savedIds =
+      state.savedArticles.map(
+        saved =>
+          String(
+            saved.id
+          )
+      );
 
-        renderSaved();
+    saveSavedState();
+
+    renderEverything();
+
+    showToast(
+      "Story saved to your account"
+    );
+
+  } catch (error) {
+
+    console.warn(
+      "Cloud save failed:",
+      error
+    );
+
+    showToast(
+      error.message ||
+      "Unable to sync saved story."
+    );
+  }
+}
+
+
+/* =========================================================
+   OPEN ARTICLE
+========================================================= */
+
+function readArticle(
+  id
+) {
+
+  const article =
+    findArticle(id);
+
+  if (!article?.url) {
+
+    showToast(
+      "Direct article link is not available."
+    );
+
+    return;
+  }
+
+  window.open(
+    article.url,
+    "_blank",
+    "noopener,noreferrer"
+  );
+}
+
+
+/* =========================================================
+   AI
+========================================================= */
+
+function localSummary(
+  article
+) {
+
+  return `
+AI Summary
+
+${article.description}
+
+Why it matters:
+
+This story may be relevant to students and young adults because it highlights a development in ${article.category.toLowerCase()}.
+
+Source:
+
+${article.source.name}
+`;
+}
+
+
+function localExplain(
+  article
+) {
+
+  return `
+AI Explanation
+
+What's happening?
+
+${article.description}
+
+In simple words:
+
+This is a ${article.category.toLowerCase()} update. The useful part is understanding what changed and what it could mean for your choices, studies, work or daily life.
+
+Quick takeaway:
+
+Read the source for the full details when this topic matters to you.
+`;
+}
+
+
+async function openAiModal(
+  article,
+  type
+) {
+
+  if (!article) {
+    return;
+  }
+
+  const modal =
+    $("#aiModal");
+
+  const content =
+    $("#modalContent");
+
+  const title =
+    $("#modalTitle");
+
+  const label =
+    $("#modalLabel");
+
+  const icon =
+    $("#modalIcon");
+
+  if (
+    !modal ||
+    !content
+  ) {
+    return;
+  }
+
+  modal.classList.remove(
+    "hidden"
+  );
+
+  modal.setAttribute(
+    "aria-hidden",
+    "false"
+  );
+
+  const isSummary =
+    type ===
+    "summary";
+
+  icon.textContent =
+    isSummary
+      ? "âœ¦"
+      : "?";
+
+  label.textContent =
+    isSummary
+      ? "AI SUMMARY"
+      : "AI EXPLANATION";
+
+  title.textContent =
+    isSummary
+      ? "Quick Summary"
+      : "Explained Simply";
+
+  content.textContent =
+    isSummary
+      ? localSummary(article)
+      : localExplain(article);
+
+  try {
+
+    const response =
+      await fetch(
+        AI_ANALYZE_API,
+        {
+          method:
+            "POST",
+
+          headers: {
+            "Content-Type":
+              "application/json"
+          },
+
+          body:
+            JSON.stringify({
+              article: {
+                title:
+                  article.title,
+
+                description:
+                  article.description,
+
+                content:
+                  article.content,
+
+                source:
+                  article.source?.name ||
+                  article.source,
+
+                url:
+                  article.url
+              }
+            })
+        }
+      );
+
+    const data =
+      await response
+        .json()
+        .catch(
+          () => ({})
+        );
+
+    if (
+      response.ok &&
+      data.success
+    ) {
+
+      const result =
+        data.analysis ||
+        data.aiResponse ||
+        data.summary ||
+        data.explanation ||
+        data.text ||
+        data.result;
+
+      if (result) {
+
+        content.textContent =
+          String(result);
+      }
+
+    } else if (
+      !response.ok
+    ) {
+
+      showToast(
+        "AI is temporarily unavailable; showing the local explanation."
+      );
     }
 
+  } catch (error) {
 
-    if (viewName === "radar") {
+    console.warn(
+      "AI request failed",
+      error
+    );
 
-        renderRadar();
-    }
+    showToast(
+      "AI is unavailable; showing the local version."
+    );
+  }
+}
 
 
-    window.scrollTo({
-        top: 0,
-        behavior: "smooth"
-    });
+function closeModal() {
+
+  const modal =
+    $("#aiModal");
+
+  if (!modal) {
+    return;
+  }
+
+  modal.classList.add(
+    "hidden"
+  );
+
+  modal.setAttribute(
+    "aria-hidden",
+    "true"
+  );
 }
 
 
@@ -2609,447 +3458,2081 @@ function showView(viewName) {
 
 function renderEverything() {
 
-    renderHome();
+  renderHome();
 
-    renderFlash();
+  renderFlash();
 
-    renderExplain();
+  renderExplain();
 
-    renderSaved();
+  renderExcite();
 
-    renderRadar();
+  renderOpportunities();
 
-    renderSwiping();
+  renderSaved();
 
-    renderBlindspot();
+  renderRadar();
+
+  renderSwiping();
+
+  renderBlindspot();
+}
+
+
+function showLoadingState() {
+
+  const html = `
+    <div class="loading-card">
+      Loading Gen Z Pulse...
+    </div>
+  `;
+
+  [
+    "#homeNewsGrid",
+    "#flashNewsGrid",
+    "#explainGrid",
+    "#radarGrid"
+  ]
+    .forEach(
+      selector => {
+
+        const element =
+          $(selector);
+
+        if (element) {
+
+          element.innerHTML =
+            html;
+        }
+      }
+    );
 }
 
 
 /* =========================================================
-   TOAST
+   LOAD NEWS
 ========================================================= */
 
-let toastTimer = null;
+async function loadNews() {
+
+  if (state.loading) {
+    return;
+  }
+
+  state.loading =
+    true;
+
+  showLoadingState();
+
+  try {
+
+    const response =
+      await fetch(
+        NEWS_API,
+        {
+          headers: {
+            Accept:
+              "application/json"
+          },
+
+          cache:
+            "no-store"
+        }
+      );
+
+    if (!response.ok) {
+
+      throw new Error(
+        `News API returned ${response.status}`
+      );
+    }
+
+    const payload =
+      await response.json();
+
+    const normalized =
+      extractArticles(
+        payload
+      )
+        .map(
+          (
+            article,
+            index
+          ) =>
+            normalizeArticle(
+              article,
+              index
+            )
+        )
+        .filter(Boolean);
+
+    state.articles =
+      normalized.length
+        ? normalized
+        : fallbackArticles.map(
+            normalizeArticle
+          );
+
+  } catch (error) {
+
+    console.warn(
+      "Live news unavailable; using backup stories.",
+      error
+    );
+
+    state.articles =
+      fallbackArticles.map(
+        normalizeArticle
+      );
+
+    showToast(
+      "Showing backup stories because live news is unavailable."
+    );
+
+  } finally {
+
+    state.loading =
+      false;
+
+    state.swipingIndex =
+      0;
+
+    state.blindspotIndex =
+      0;
+
+    state.homeSearch =
+      "";
+
+    state.flashSearch =
+      "";
+
+    state.flashCategory =
+      "All";
+
+    renderEverything();
+  }
+}
 
 
-function showToast(message) {
+/* =========================================================
+   RADAR / BLINDSPOT
+========================================================= */
 
-    const toast =
-        $("#toast");
+async function syncInterestsToCloud() {
+
+  if (!state.user?.id) {
+    return;
+  }
+
+  try {
+
+    const response =
+      await fetch(
+        INTERESTS_API,
+        {
+          method:
+            "POST",
+
+          headers: {
+            "Content-Type":
+              "application/json"
+          },
+
+          body:
+            JSON.stringify({
+              userId:
+                state.user.id,
+
+              interests:
+                state.blindspotCategories
+            })
+        }
+      );
+
+    const data =
+      await response
+        .json()
+        .catch(
+          () => ({})
+        );
+
+    if (
+      !response.ok ||
+      !data.success
+    ) {
+
+      throw new Error(
+        data.message ||
+        "Unable to sync Radar preferences."
+      );
+    }
+
+    if (
+      Array.isArray(
+        data.interests
+      )
+    ) {
+
+      state.blindspotCategories =
+        data.interests;
+
+      saveBlindspotCategories();
+
+      renderRadar();
+    }
+
+  } catch (error) {
+
+    console.warn(
+      "Radar cloud sync failed:",
+      error
+    );
+
+    showToast(
+      "Radar saved locally; cloud sync failed."
+    );
+  }
+}
 
 
-    if (!toast) {
+function toggleBlindspotCategory(
+  category
+) {
 
-        return;
+  const index =
+    state.blindspotCategories
+      .findIndex(
+        item =>
+          categoryKey(
+            item
+          ) ===
+          categoryKey(
+            category
+          )
+      );
+
+  if (index === -1) {
+
+    state.blindspotCategories.push(
+      category
+    );
+
+    showToast(
+      `${category} added to Blindspot`
+    );
+
+  } else {
+
+    state.blindspotCategories.splice(
+      index,
+      1
+    );
+
+    showToast(
+      `${category} removed from Blindspot`
+    );
+  }
+
+  saveBlindspotCategories();
+
+  syncInterestsToCloud();
+
+  state.swipingIndex =
+    0;
+
+  state.blindspotIndex =
+    0;
+
+  renderRadar();
+
+  renderSwiping();
+
+  renderBlindspot();
+}
+
+
+function resetRadar() {
+
+  state.blindspotCategories =
+    [
+      "Sports",
+      "Gaming",
+      "Entertainment"
+    ];
+
+  saveBlindspotCategories();
+
+  syncInterestsToCloud();
+
+  state.swipingIndex =
+    0;
+
+  state.blindspotIndex =
+    0;
+
+  renderEverything();
+
+  showToast(
+    "Radar preferences reset"
+  );
+}
+
+
+/* =========================================================
+   CLOUD ACCOUNT DATA
+========================================================= */
+
+async function loadCloudUserData() {
+
+  if (!state.user?.id) {
+    return;
+  }
+
+  try {
+
+    /* ================================================
+       LOAD SAVED STORIES
+    ================================================ */
+
+    const savedResponse =
+      await fetch(
+        `${SAVED_API}/${encodeURIComponent(
+          state.user.id
+        )}`,
+        {
+          headers: {
+            Accept:
+              "application/json"
+          },
+
+          cache:
+            "no-store"
+        }
+      );
+
+    if (
+      savedResponse.ok
+    ) {
+
+      const savedData =
+        await savedResponse
+          .json()
+          .catch(
+            () => ({})
+          );
+
+      if (
+        savedData.success
+      ) {
+
+        state.savedArticles =
+          (
+            savedData.savedStories ||
+            []
+          )
+            .map(
+              (
+                story,
+                index
+              ) =>
+                normalizeArticle(
+                  story,
+                  index
+                )
+            )
+            .filter(Boolean);
+
+        state.savedIds =
+          state.savedArticles.map(
+            story =>
+              String(
+                story.id
+              )
+          );
+
+        saveSavedState();
+      }
     }
 
 
-    toast.textContent =
-        message;
+    /* ================================================
+       LOAD RADAR INTERESTS
+    ================================================ */
 
+    const interestsResponse =
+      await fetch(
+        `${INTERESTS_API}/${encodeURIComponent(
+          state.user.id
+        )}`,
+        {
+          headers: {
+            Accept:
+              "application/json"
+          },
 
-    toast.classList.add(
-        "show"
+          cache:
+            "no-store"
+        }
+      );
+
+    if (
+      interestsResponse.ok
+    ) {
+
+      const interestsData =
+        await interestsResponse
+          .json()
+          .catch(
+            () => ({})
+          );
+
+      if (
+        interestsData.success &&
+        Array.isArray(
+          interestsData.interests
+        )
+      ) {
+
+        const valid =
+          interestsData.interests
+            .filter(
+              interest =>
+                availableCategories.some(
+                  category =>
+                    categoryKey(
+                      category
+                    ) ===
+                    categoryKey(
+                      interest
+                    )
+                )
+            );
+
+        if (valid.length) {
+
+          state.blindspotCategories =
+            valid;
+
+          saveBlindspotCategories();
+        }
+      }
+    }
+
+    renderEverything();
+
+  } catch (error) {
+
+    console.warn(
+      "Cloud account data could not be loaded:",
+      error
     );
-
-
-    clearTimeout(
-        toastTimer
-    );
-
-
-    toastTimer =
-        setTimeout(
-            () => {
-
-                toast.classList.remove(
-                    "show"
-                );
-
-            },
-            2500
-        );
+  }
 }
 
 
 /* =========================================================
-   EVENT HANDLING
+   ACCOUNT
+========================================================= */
+
+function loadCurrentUser() {
+
+  try {
+
+    return JSON.parse(
+      localStorage.getItem(
+        "gengpulse_user"
+      ) || "null"
+    );
+
+  } catch {
+
+    return null;
+  }
+}
+
+
+function saveCurrentUser(
+  user
+) {
+
+  state.user =
+    user || null;
+
+  if (user) {
+
+    localStorage.setItem(
+      "gengpulse_user",
+      JSON.stringify(
+        user
+      )
+    );
+
+  } else {
+
+    localStorage.removeItem(
+      "gengpulse_user"
+    );
+
+    state.savedIds =
+      [];
+
+    state.savedArticles =
+      [];
+
+    saveSavedState();
+  }
+
+  updateAccountButton();
+}
+
+
+function updateAccountButton() {
+
+  const button =
+    $("#signInBtn");
+
+  if (!button) {
+    return;
+  }
+
+  button.textContent =
+    state.user?.name
+      ? `Hi, ${String(
+          state.user.name
+        ).split(" ")[0]}`
+      : "Sign in";
+
+  button.title =
+    state.user?.email ||
+    "Sign in to Gen Z Pulse";
+}
+
+
+function setAccountModal(
+  html,
+  title =
+    "Sign in to Gen Z Pulse"
+) {
+
+  const modal =
+    $("#aiModal");
+
+  if (!modal) {
+    return;
+  }
+
+  $("#modalIcon").textContent =
+    "â—‹";
+
+  $("#modalLabel").textContent =
+    "ACCOUNT";
+
+  $("#modalTitle").textContent =
+    title;
+
+  $("#modalContent").innerHTML =
+    html;
+
+  modal.classList.remove(
+    "hidden"
+  );
+
+  modal.setAttribute(
+    "aria-hidden",
+    "false"
+  );
+}
+
+
+function openSignInModal() {
+
+  setAccountModal(`
+    <form
+      id="accountForm"
+      class="account-form"
+      data-mode="signin"
+      novalidate
+    >
+
+      <label>
+        Email
+
+        <input
+          id="accountEmail"
+          type="email"
+          autocomplete="email"
+          placeholder="you@example.com"
+          required
+        >
+      </label>
+
+      <label>
+        Password
+
+        <input
+          id="accountPassword"
+          type="password"
+          autocomplete="current-password"
+          placeholder="Your password"
+          required
+        >
+      </label>
+
+      <button
+        class="account-submit"
+        type="submit"
+      >
+        Sign in
+      </button>
+
+      <p class="account-switch">
+        New here?
+
+        <button
+          type="button"
+          class="account-link"
+          id="showSignupBtn"
+        >
+          Create account
+        </button>
+      </p>
+
+      <div
+        class="account-message"
+        id="accountMessage"
+        role="status"
+        aria-live="polite"
+      ></div>
+
+    </form>
+  `);
+}
+
+
+function openSignupModal() {
+
+  setAccountModal(
+    `
+      <form
+        id="accountForm"
+        class="account-form"
+        data-mode="signup"
+        novalidate
+      >
+
+        <label>
+          Name
+
+          <input
+            id="accountName"
+            type="text"
+            autocomplete="name"
+            placeholder="Your name"
+            required
+          >
+        </label>
+
+        <label>
+          Email
+
+          <input
+            id="accountEmail"
+            type="email"
+            autocomplete="email"
+            placeholder="you@example.com"
+            required
+          >
+        </label>
+
+        <label>
+          Password
+
+          <input
+            id="accountPassword"
+            type="password"
+            autocomplete="new-password"
+            placeholder="Create a password"
+            minlength="6"
+            required
+          >
+        </label>
+
+        <button
+          class="account-submit"
+          type="submit"
+        >
+          Create account
+        </button>
+
+        <p class="account-switch">
+          Already have an account?
+
+          <button
+            type="button"
+            class="account-link"
+            id="showSigninBtn"
+          >
+            Sign in
+          </button>
+        </p>
+
+        <div
+          class="account-message"
+          id="accountMessage"
+          role="status"
+          aria-live="polite"
+        ></div>
+
+      </form>
+    `,
+    "Create your Gen Z Pulse account"
+  );
+}
+
+
+function openAccountModal() {
+
+  if (!state.user) {
+
+    openSignInModal();
+
+    return;
+  }
+
+  setAccountModal(
+    `
+      <div class="account-profile">
+
+        <div class="account-profile-mark">
+          ${escapeHtml(
+            String(
+              state.user.name ||
+              "G"
+            )
+              .charAt(0)
+              .toUpperCase()
+          )}
+        </div>
+
+        <div>
+
+          <strong>
+            ${escapeHtml(
+              state.user.name ||
+              "Gen Z Pulse user"
+            )}
+          </strong>
+
+          <span>
+            ${escapeHtml(
+              state.user.email ||
+              ""
+            )}
+          </span>
+
+        </div>
+
+      </div>
+
+      <div class="account-status">
+
+        <span>
+          Plan
+        </span>
+
+        <strong>
+          ${
+            state.user.subscription ===
+            "plus"
+              ? "Gen Z Plus"
+              : "Free"
+          }
+        </strong>
+
+      </div>
+
+      <button
+        class="account-submit secondary-account"
+        id="signOutBtn"
+        type="button"
+      >
+        Sign out
+      </button>
+    `,
+    "Your Gen Z Pulse account"
+  );
+}
+
+
+async function handleAccountSubmit(
+  form
+) {
+
+  const mode =
+    form.dataset.mode ||
+    "signin";
+
+  const message =
+    $("#accountMessage");
+
+  const submit =
+    form.querySelector(
+      'button[type="submit"]'
+    );
+
+  const email =
+    $("#accountEmail")
+      ?.value
+      .trim()
+      .toLowerCase() ||
+    "";
+
+  const password =
+    $("#accountPassword")
+      ?.value ||
+    "";
+
+  const name =
+    $("#accountName")
+      ?.value
+      .trim() ||
+    "";
+
+  if (
+    mode === "signup" &&
+    !name
+  ) {
+
+    message.textContent =
+      "Please enter your name.";
+
+    return;
+  }
+
+  if (
+    !email ||
+    !password
+  ) {
+
+    message.textContent =
+      "Please enter your email and password.";
+
+    return;
+  }
+
+  if (
+    mode === "signup" &&
+    password.length < 6
+  ) {
+
+    message.textContent =
+      "Password must be at least 6 characters.";
+
+    return;
+  }
+
+  submit.disabled =
+    true;
+
+  submit.textContent =
+    mode === "signup"
+      ? "Creating..."
+      : "Signing in...";
+
+  message.textContent =
+    "";
+
+  try {
+
+    const response =
+      await fetch(
+        mode === "signup"
+          ? SIGNUP_API
+          : SIGNIN_API,
+        {
+          method:
+            "POST",
+
+          headers: {
+            "Content-Type":
+              "application/json"
+          },
+
+          body:
+            JSON.stringify(
+              mode === "signup"
+                ? {
+                    name,
+                    email,
+                    password
+                  }
+                : {
+                    email,
+                    password
+                  }
+            )
+        }
+      );
+
+    const data =
+      await response
+        .json()
+        .catch(
+          () => ({})
+        );
+
+    if (
+      !response.ok ||
+      !data.success
+    ) {
+
+      throw new Error(
+        data.message ||
+        "Account request failed."
+      );
+    }
+
+    saveCurrentUser(
+      data.user
+    );
+
+    await loadCloudUserData();
+
+    closeModal();
+
+    showToast(
+      mode === "signup"
+        ? "Account created successfully."
+        : "Signed in successfully."
+    );
+
+    renderEverything();
+
+  } catch (error) {
+
+    message.textContent =
+      error.message ||
+      "Unable to complete the request.";
+
+  } finally {
+
+    submit.disabled =
+      false;
+
+    submit.textContent =
+      mode === "signup"
+        ? "Create account"
+        : "Sign in";
+  }
+}
+
+
+/* =========================================================
+   GEN Z PLUS
+========================================================= */
+
+function openPlusModal(
+  message = ""
+) {
+
+  const modal =
+    $("#aiModal");
+
+  const content =
+    $("#modalContent");
+
+  if (
+    !modal ||
+    !content
+  ) {
+    return;
+  }
+
+  $("#modalIcon").textContent =
+    "+";
+
+  $("#modalLabel").textContent =
+    "GEN Z PLUS";
+
+  $("#modalTitle").textContent =
+    "â‚¹49 / month";
+
+  if (
+    state.user?.subscription ===
+    "plus"
+  ) {
+
+    content.innerHTML = `
+      <div class="plus-active">
+
+        <strong>
+          You already have Gen Z Plus.
+        </strong>
+
+        <span>
+          Enjoy deeper AI explanations,
+          stronger personalization and
+          premium reading features.
+        </span>
+
+      </div>
+
+      <button
+        class="account-submit secondary-account"
+        id="closePlusBtn"
+        type="button"
+      >
+        Close
+      </button>
+    `;
+
+  } else {
+
+    content.innerHTML = `
+      <div class="plus-copy">
+
+        <p>
+          Upgrade Gen Z Pulse with
+          premium reading features.
+        </p>
+
+        <div class="plus-features">
+
+          <span>
+            âœ“ Deeper AI explanations
+          </span>
+
+          <span>
+            âœ“ Stronger personalization
+          </span>
+
+          <span>
+            âœ“ Premium reading features
+          </span>
+
+        </div>
+
+        <div class="plus-note">
+          â‚¹49 payment through Razorpay
+          for Gen Z Plus.
+        </div>
+
+      </div>
+
+      <button
+        class="account-submit"
+        id="plusCheckoutBtn"
+        type="button"
+      >
+        ${
+          state.user
+            ? "Upgrade to Gen Z Plus â€” â‚¹49"
+            : "Sign in to continue"
+        }
+      </button>
+
+      <div
+        class="account-message"
+        id="plusMessage"
+        role="status"
+        aria-live="polite"
+      >
+        ${escapeHtml(message)}
+      </div>
+    `;
+  }
+
+  modal.classList.remove(
+    "hidden"
+  );
+
+  modal.setAttribute(
+    "aria-hidden",
+    "false"
+  );
+}
+
+
+async function loadRazorpayCheckout() {
+
+  if (
+    window.Razorpay
+  ) {
+    return true;
+  }
+
+  await new Promise(
+    (
+      resolve,
+      reject
+    ) => {
+
+      const existing =
+        document.querySelector(
+          'script[data-rzp="checkout"]'
+        );
+
+      if (existing) {
+
+        existing.addEventListener(
+          "load",
+          () => resolve()
+        );
+
+        existing.addEventListener(
+          "error",
+          reject
+        );
+
+        return;
+      }
+
+      const script =
+        document.createElement(
+          "script"
+        );
+
+      script.src =
+        "https://checkout.razorpay.com/v1/checkout.js";
+
+      script.dataset.rzp =
+        "checkout";
+
+      script.onload =
+        resolve;
+
+      script.onerror =
+        reject;
+
+      document.head.appendChild(
+        script
+      );
+    }
+  );
+
+  return !!window.Razorpay;
+}
+
+
+async function startPlusCheckout(){
+
+  if(!state.user){
+
+    openSignInModal();
+
+    showToast(
+      "Sign in before upgrading to Gen Z Plus."
+    );
+
+    return;
+  }
+
+  const message =
+    $("#plusMessage");
+
+  const button =
+    $("#plusCheckoutBtn");
+
+  if(!button)return;
+
+  try{
+
+    button.disabled = true;
+
+    button.textContent =
+      "Preparing checkout...";
+
+    if(message){
+      message.textContent = "";
+    }
+
+    const ready =
+      await loadRazorpayCheckout();
+
+    if(!ready){
+
+      throw new Error(
+        "Razorpay checkout could not be loaded."
+      );
+    }
+
+    const response =
+      await fetch(
+        PLUS_ORDER_API,
+        {
+          method: "POST",
+
+          headers: {
+            "Content-Type":
+              "application/json"
+          },
+
+          body: JSON.stringify({
+
+            userId:
+              state.user?.id || "",
+
+            email:
+              state.user?.email || ""
+          })
+        }
+      );
+
+    const data =
+      await response
+        .json()
+        .catch(() => ({}));
+
+    if(
+      !response.ok ||
+      !data.success
+    ){
+
+      throw new Error(
+        data.message ||
+        "Unable to create the Gen Z Plus order."
+      );
+    }
+
+    if(data.userId){
+
+      state.user = {
+        ...state.user,
+        id: data.userId
+      };
+
+      saveCurrentUser(
+        state.user
+      );
+    }
+
+    const options = {
+
+      key:
+        data.razorpayKeyId,
+
+      amount:
+        data.amount,
+
+      order_id:
+        data.orderId ||
+        data.order?.id,
+
+      currency:
+        data.currency ||
+        "INR",
+
+      name:
+        "Gen Z Pulse",
+
+      description:
+        "Gen Z Plus - \u20B9 49",
+
+      prefill: {
+
+        name:
+          state.user.name || "",
+
+        email:
+          state.user.email || ""
+      },
+
+      theme: {
+
+        color:
+          "#26734d"
+      },
+
+      handler:
+        async function(payment){
+
+          try{
+
+            const verifyResponse =
+              await fetch(
+                PLUS_VERIFY_API,
+                {
+                  method: "POST",
+
+                  headers: {
+                    "Content-Type":
+                      "application/json"
+                  },
+
+                  body: JSON.stringify({
+
+                    userId:
+                      state.user?.id || "",
+
+                    email:
+                      state.user?.email || "",
+
+                    razorpay_order_id:
+                      payment.razorpay_order_id,
+
+                    razorpay_payment_id:
+                      payment.razorpay_payment_id,
+
+                    razorpay_signature:
+                      payment.razorpay_signature
+                  })
+                }
+              );
+
+            const result =
+              await verifyResponse
+                .json()
+                .catch(() => ({}));
+
+            if(
+              !verifyResponse.ok ||
+              !result.success
+            ){
+
+              throw new Error(
+                result.message ||
+                "Payment verification failed."
+              );
+            }
+
+            saveCurrentUser(
+              result.user ||
+              {
+                ...state.user,
+                subscription:
+                  "plus"
+              }
+            );
+
+            closeModal();
+
+            showToast(
+              "Gen Z Plus activated successfully."
+            );
+
+            renderEverything();
+
+          }catch(error){
+
+            console.error(
+              "Payment verification error:",
+              error
+            );
+
+            if(message){
+
+              message.textContent =
+                error.message ||
+                "Payment verification failed.";
+            }
+          }
+        },
+
+      modal: {
+
+        ondismiss:
+          function(){
+
+            button.disabled = false;
+
+            button.textContent =
+              "Upgrade to Gen Z Plus - \u20B9 49";
+          }
+      }
+    };
+
+    const rzp =
+      new Razorpay(options);
+
+    rzp.open();
+
+  }catch(error){
+
+    console.error(
+      "Gen Z Plus checkout error:",
+      error
+    );
+
+    if(message){
+
+      message.textContent =
+        error.message ||
+        "Unable to start payment.";
+    }
+
+    button.disabled = false;
+
+    button.textContent =
+      "Upgrade to Gen Z Plus - \u20B9 49";
+  }
+}
+function showView(
+  viewName
+) {
+
+  const target =
+    document.getElementById(
+      `${viewName}View`
+    );
+
+  if (!target) {
+    return;
+  }
+
+  $all(
+    ".view"
+  )
+    .forEach(
+      view => {
+
+        view.hidden =
+          true;
+
+        view.classList.remove(
+          "active"
+        );
+      }
+    );
+
+  target.hidden =
+    false;
+
+  target.classList.add(
+    "active"
+  );
+
+  $all(
+    ".nav-btn"
+  )
+    .forEach(
+      button => {
+
+        button.classList.toggle(
+          "active",
+          button.dataset.view ===
+            viewName
+        );
+      }
+    );
+
+  state.currentView =
+    viewName;
+
+  if (
+    viewName ===
+    "radar"
+  ) {
+    renderRadar();
+  }
+
+  if (
+    viewName ===
+    "swiping"
+  ) {
+    renderSwiping();
+  }
+
+  if (
+    viewName ===
+    "blindspot"
+  ) {
+    renderBlindspot();
+  }
+
+  if (
+    viewName ===
+    "saved"
+  ) {
+    renderSaved();
+  }
+
+  window.scrollTo(
+    {
+      top: 0,
+      behavior:
+        "smooth"
+    }
+  );
+}
+
+
+/* =========================================================
+   EVENTS
 ========================================================= */
 
 function setupEvents() {
 
+  document.addEventListener(
+    "click",
+    event => {
 
-    /*
-       Navigation
-    */
+      const viewButton =
+        event.target.closest(
+          "[data-view]"
+        );
 
-    document.addEventListener(
-        "click",
-        event => {
+      if (viewButton) {
 
-            const viewButton =
-                event.target.closest(
-                    "[data-view]"
-                );
+        event.preventDefault();
 
+        showView(
+          viewButton.dataset.view
+        );
 
-            if (viewButton) {
-
-                event.preventDefault();
-
-                showView(
-                    viewButton.dataset.view
-                );
-
-                return;
-            }
+        return;
+      }
 
 
-            /*
-               Save
-            */
+      const save =
+        event.target.closest(
+          ".save"
+        );
 
-            const saveButton =
-                event.target.closest(
-                    ".save"
-                );
+      if (
+        save?.dataset.id
+      ) {
 
+        event.preventDefault();
 
-            if (
-                saveButton &&
-                saveButton.dataset.id
-            ) {
+        event.stopPropagation();
 
-                event.stopPropagation();
+        toggleSave(
+          save.dataset.id
+        );
 
-                toggleSave(
-                    saveButton.dataset.id
-                );
-
-                return;
-            }
+        return;
+      }
 
 
-            /*
-               AI
-            */
+      const ai =
+        event.target.closest(
+          ".ai-btn"
+        );
 
-            const aiButton =
-                event.target.closest(
-                    ".ai-btn"
-                );
+      if (
+        ai?.dataset.id
+      ) {
 
+        event.preventDefault();
 
-            if (aiButton) {
+        event.stopPropagation();
 
-                event.stopPropagation();
+        openAiModal(
+          findArticle(
+            ai.dataset.id
+          ),
+          ai.dataset.aiType ||
+            "summary"
+        );
 
-
-                const article =
-                    findArticle(
-                        aiButton.dataset.id
-                    );
-
-
-                openAiModal(
-                    article,
-                    aiButton.dataset.aiType
-                );
+        return;
+      }
 
 
-                return;
-            }
+      const read =
+        event.target.closest(
+          ".article-read"
+        );
+
+      if (
+        read?.dataset.id
+      ) {
+
+        event.preventDefault();
+
+        event.stopPropagation();
+
+        readArticle(
+          read.dataset.id
+        );
+
+        return;
+      }
 
 
-            /*
-               Read article
-            */
+      const notInterested =
+        event.target.closest(
+          ".not-interested"
+        );
 
-            const readButton =
-                event.target.closest(
-                    ".article-read"
-                );
+      if (
+        notInterested?.dataset.id
+      ) {
 
+        event.preventDefault();
 
-            if (readButton) {
+        event.stopPropagation();
 
-                event.stopPropagation();
+        const article =
+          findArticle(
+            notInterested.dataset.id
+          );
 
-                readArticle(
-                    readButton.dataset.id
-                );
+        if (article) {
 
-                return;
-            }
+          if (
+            !state.blindspotCategories.some(
+              category =>
+                categoryKey(
+                  category
+                ) ===
+                categoryKey(
+                  article.category
+                )
+            )
+          ) {
 
+            state.blindspotCategories.push(
+              article.category
+            );
+          }
 
-            /*
-               Not interested
-            */
+          saveBlindspotCategories();
 
-            const notInterested =
-                event.target.closest(
-                    ".not-interested"
-                );
+          syncInterestsToCloud();
 
+          renderSwiping();
 
-            if (notInterested) {
+          renderBlindspot();
 
-                event.stopPropagation();
+          renderRadar();
 
-                markNotInterested(
-                    notInterested.dataset.id
-                );
-
-                return;
-            }
-
-
-            /*
-               Radar category
-            */
-
-            const interestButton =
-                event.target.closest(
-                    ".interest-btn"
-                );
-
-
-            if (interestButton) {
-
-                toggleBlindspotCategory(
-                    interestButton.dataset.category
-                );
-
-                return;
-            }
-
+          showToast(
+            `${article.category} added to Blindspot`
+          );
         }
+
+        return;
+      }
+
+
+      const interest =
+        event.target.closest(
+          ".interest-btn"
+        );
+
+      if (
+        interest?.dataset.category
+      ) {
+
+        event.preventDefault();
+
+        toggleBlindspotCategory(
+          interest.dataset.category
+        );
+
+        return;
+      }
+
+
+      const flashCategory =
+        event.target.closest(
+          "[data-flash-category]"
+        );
+
+      if (flashCategory) {
+
+        state.flashCategory =
+          flashCategory.dataset.flashCategory ||
+          "All";
+
+        renderFlash();
+
+        return;
+      }
+
+
+      const exciteTopic =
+        event.target.closest(
+          "[data-excite-topic]"
+        );
+
+      if (exciteTopic) {
+
+        event.preventDefault();
+
+        const topic =
+          exciteTopic.dataset.exciteTopic ||
+          "Technology";
+
+        state.flashCategory =
+          topic;
+
+        state.flashSearch =
+          "";
+
+        showView(
+          "flash"
+        );
+
+        renderFlash();
+
+        return;
+      }
+    }
+  );
+
+
+  /* HOME SEARCH */
+
+  $("#homeSearchInput")
+    ?.addEventListener(
+      "input",
+      event => {
+
+        state.homeSearch =
+          event.target.value ||
+          "";
+      }
     );
 
 
-    /*
-       Home / refresh etc.
-    */
+  $("#homeSearchInput")
+    ?.addEventListener(
+      "keydown",
+      event => {
 
-    const refresh =
-        $("#refreshNewsBtn");
+        if (
+          event.key ===
+          "Enter"
+        ) {
 
-
-    if (refresh) {
-
-        refresh.addEventListener(
-            "click",
-            () => {
-
-                loadNews();
-            }
-        );
-    }
-
-
-    const next =
-        $("#swipeNext");
-
-
-    if (next) {
-
-        next.addEventListener(
-            "click",
-            nextSwiping
-        );
-    }
-
-
-    const previous =
-        $("#swipePrevious");
-
-
-    if (previous) {
-
-        previous.addEventListener(
-            "click",
-            previousSwiping
-        );
-    }
-
-
-    const blindNext =
-        $("#blindspotNext");
-
-
-    if (blindNext) {
-
-        blindNext.addEventListener(
-            "click",
-            nextBlindspot
-        );
-    }
-
-
-    const blindPrevious =
-        $("#blindspotPrevious");
-
-
-    if (blindPrevious) {
-
-        blindPrevious.addEventListener(
-            "click",
-            previousBlindspot
-        );
-    }
-
-
-    const resetRadarButton =
-        $("#resetRadarBtn");
-
-
-    if (resetRadarButton) {
-
-        resetRadarButton.addEventListener(
-            "click",
-            resetRadar
-        );
-    }
-
-
-    const close =
-        $("#closeModal");
-
-
-    if (close) {
-
-        close.addEventListener(
-            "click",
-            closeModal
-        );
-    }
-
-
-    const overlay =
-        $("#modalOverlay");
-
-
-    if (overlay) {
-
-        overlay.addEventListener(
-            "click",
-            closeModal
-        );
-    }
-
-
-    /*
-       Escape closes AI modal.
-    */
-
-    document.addEventListener(
-        "keydown",
-        event => {
-
-            if (
-                event.key === "Escape"
-            ) {
-
-                closeModal();
-            }
-
-
-            /*
-               Keyboard navigation for swiping.
-            */
-
-            if (
-                state.currentView ===
-                "swiping"
-            ) {
-
-                if (
-                    event.key ===
-                    "ArrowRight"
-                ) {
-
-                    nextSwiping();
-                }
-
-
-                if (
-                    event.key ===
-                    "ArrowLeft"
-                ) {
-
-                    previousSwiping();
-                }
-            }
-
-
-            if (
-                state.currentView ===
-                "blindspot"
-            ) {
-
-                if (
-                    event.key ===
-                    "ArrowRight"
-                ) {
-
-                    nextBlindspot();
-                }
-
-
-                if (
-                    event.key ===
-                    "ArrowLeft"
-                ) {
-
-                    previousBlindspot();
-                }
-            }
-
+          searchNews(
+            event.target.value
+          );
         }
+      }
     );
+
+
+  $("#homeSearchBtn")
+    ?.addEventListener(
+      "click",
+      () => {
+
+        searchNews(
+          $("#homeSearchInput")
+            ?.value ||
+            ""
+        );
+      }
+    );
+
+
+  /* FLASH SEARCH */
+
+  $("#flashSearchInput")
+    ?.addEventListener(
+      "input",
+      event => {
+
+        state.flashSearch =
+          event.target.value ||
+          "";
+
+        renderFlash();
+      }
+    );
+
+
+  $("#flashSearchInput")
+    ?.addEventListener(
+      "keydown",
+      event => {
+
+        if (
+          event.key ===
+          "Enter"
+        ) {
+
+          searchNews(
+            event.target.value
+          );
+        }
+      }
+    );
+
+
+  $("#refreshFlashBtn")
+    ?.addEventListener(
+      "click",
+      loadNews
+    );
+
+
+  /* SWIPING */
+
+  $("#swipeNext")
+    ?.addEventListener(
+      "click",
+      nextSwiping
+    );
+
+  $("#swipePrevious")
+    ?.addEventListener(
+      "click",
+      previousSwiping
+    );
+
+
+  /* BLINDSPOT */
+
+  $("#blindspotNext")
+    ?.addEventListener(
+      "click",
+      nextBlindspot
+    );
+
+  $("#blindspotPrevious")
+    ?.addEventListener(
+      "click",
+      previousBlindspot
+    );
+
+
+  /* RADAR */
+
+  $("#resetRadarBtn")
+    ?.addEventListener(
+      "click",
+      resetRadar
+    );
+
+
+  /* MODAL */
+
+  $("#closeModal")
+    ?.addEventListener(
+      "click",
+      closeModal
+    );
+
+  $("#modalOverlay")
+    ?.addEventListener(
+      "click",
+      closeModal
+    );
+
+
+  /* ACCOUNT */
+
+  $("#signInBtn")
+    ?.addEventListener(
+      "click",
+      openAccountModal
+    );
+
+
+  /* PLUS */
+
+  $("#plusBtn")
+    ?.addEventListener(
+      "click",
+      openPlusModal
+    );
+
+
+  /* ACCOUNT FORM */
+
+  document.addEventListener(
+    "submit",
+    event => {
+
+      if (
+        event.target?.id ===
+        "accountForm"
+      ) {
+
+        event.preventDefault();
+
+        handleAccountSubmit(
+          event.target
+        );
+      }
+    }
+  );
+
+
+  /* ACCOUNT / PLUS BUTTONS */
+
+  document.addEventListener(
+    "click",
+    event => {
+
+      if (
+        event.target?.id ===
+        "showSignupBtn"
+      ) {
+
+        event.preventDefault();
+
+        openSignupModal();
+
+        return;
+      }
+
+
+      if (
+        event.target?.id ===
+        "showSigninBtn"
+      ) {
+
+        event.preventDefault();
+
+        openSignInModal();
+
+        return;
+      }
+
+
+      if (
+        event.target?.id ===
+        "signOutBtn"
+      ) {
+
+        event.preventDefault();
+
+        saveCurrentUser(
+          null
+        );
+
+        closeModal();
+
+        showToast(
+          "Signed out"
+        );
+
+        return;
+      }
+
+
+      if (
+        event.target?.id ===
+        "plusCheckoutBtn"
+      ) {
+
+        event.preventDefault();
+
+        startPlusCheckout();
+
+        return;
+      }
+
+
+      if (
+        event.target?.id ===
+        "closePlusBtn"
+      ) {
+
+        event.preventDefault();
+
+        closeModal();
+
+        return;
+      }
+    }
+  );
+
+
+  /* PROFILE */
+
+  $("#profileBtn")
+    ?.addEventListener(
+      "click",
+      () => {
+
+        showView(
+          "radar"
+        );
+      }
+    );
+
+
+  /* KEYBOARD */
+
+  document.addEventListener(
+    "keydown",
+    event => {
+
+      if (
+        event.key ===
+        "Escape"
+      ) {
+        closeModal();
+      }
+
+
+      if (
+        state.currentView ===
+        "swiping"
+      ) {
+
+        if (
+          event.key ===
+          "ArrowRight"
+        ) {
+          nextSwiping();
+        }
+
+        if (
+          event.key ===
+          "ArrowLeft"
+        ) {
+          previousSwiping();
+        }
+      }
+
+
+      if (
+        state.currentView ===
+        "blindspot"
+      ) {
+
+        if (
+          event.key ===
+          "ArrowRight"
+        ) {
+          nextBlindspot();
+        }
+
+        if (
+          event.key ===
+          "ArrowLeft"
+        ) {
+          previousBlindspot();
+        }
+      }
+    }
+  );
 }
 
 
 /* =========================================================
-   INITIALIZE
+   INIT
 ========================================================= */
 
-function init() {
+async function init() {
 
-    setupEvents();
+  setupEvents();
 
-    renderEverything();
+  updateAccountButton();
 
-    loadNews();
+  renderEverything();
+
+  if (state.user?.id) {
+
+    await loadCloudUserData();
+  }
+
+  loadNews();
 }
 
 
-/*
-   Start application.
-*/
-
 document.addEventListener(
-    "DOMContentLoaded",
-    init
+  "DOMContentLoaded",
+  init
 );
 
 
-function showView(viewName){const target=document.getElementById(viewName+"View");if(!target){console.warn("View not found: "+viewName);return;}document.querySelectorAll(".app-view").forEach(function(view){view.classList.remove("active");view.hidden=true;});target.classList.add("active");target.hidden=false;document.querySelectorAll(".nav-item").forEach(function(btn){btn.classList.toggle("active",btn.dataset.view===viewName);});state.currentView=viewName;if(viewName==="swiping"){renderSwiping();}if(viewName==="blindspot"){renderBlindspot();}if(viewName==="saved"){renderSaved();}if(viewName==="radar"){renderRadar();}window.scrollTo({top:0,behavior:"smooth"});}
 
 
-
-document.addEventListener("click",async function(e){const b=e.target.closest(".ai-btn");if(!b)return;e.preventDefault();e.stopImmediatePropagation();const a=findArticle(b.dataset.id);if(!a)return;const m=document.getElementById("aiModal"),t=document.getElementById("modalTitle"),l=document.getElementById("modalLabel"),i=document.getElementById("modalIcon"),c=document.getElementById("modalContent");if(!m||!c)return;m.classList.remove("hidden");const type=b.dataset.aiType==="explain"?"explain":"summary";if(type==="summary"){i.textContent="??";l.textContent="AI GENERATED SUMMARY";t.textContent="Quick Summary";c.textContent=createLocalSummary(a)}else{i.textContent="??";l.textContent="GEN Z EXPLAIN";t.textContent="Explained Simply";c.textContent=createLocalExplain(a)}try{const r=await fetch(AI_ENDPOINTS[type],{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({article:{title:a.title,description:a.description,content:a.content,source:a.source?.name||a.source}})});if(!r.ok)return;const d=await r.json();const x=d.summary||d.explanation||d.text||d.result||d.analysis;if(x)c.textContent=x}catch(err){console.warn("AI unavailable; local result kept.",err)}},true)
-function findArticle(id){const allArticles=[...state.articles,...fallbackBlindspotArticles];return allArticles.find(article=>String(article.id)===String(id));}
-document.addEventListener("click",function(e){const b=e.target.closest(".opportunity-btn");if(!b)return;e.preventDefault();const u=b.dataset.opportunityUrl;if(u)window.open(u,"_blank","noopener,noreferrer");},true)
-
-
-
-
-function renderSaved(){const grid=$("#savedGrid");if(!grid)return;const all=[...state.articles,...fallbackBlindspotArticles];const articles=state.savedIds.map(id=>all.find(a=>String(a.id)===String(id))).filter(Boolean);if(!articles.length){grid.innerHTML=emptyState("??","Nothing saved yet","Tap ? Save on a story to keep it here.");return;}grid.innerHTML=articles.map(createNewsCard).join("");}
-function toggleSave(id){const key=String(id);const all=[...state.articles,...fallbackBlindspotArticles];const article=all.find(a=>String(a.id)===key);if(!article)return;let saved=[];try{saved=JSON.parse(localStorage.getItem("genGPulseSavedArticles")||"[]");if(!Array.isArray(saved))saved=[]}catch{saved=[]}const i=saved.findIndex(a=>String(a.id)===key);if(i===-1){saved.push(article);state.savedIds=Array.from(new Set([...state.savedIds,key]));showToast("Story saved");}else{saved.splice(i,1);state.savedIds=state.savedIds.filter(x=>String(x)!==key);showToast("Removed from Saved");}localStorage.setItem("genGPulseSavedArticles",JSON.stringify(saved));saveSavedIds();renderHome();renderFlash();renderExplain();renderSaved();renderSwiping();renderBlindspot()}function renderSaved(){const grid=$("#savedGrid");if(!grid)return;let saved=[];try{saved=JSON.parse(localStorage.getItem("genGPulseSavedArticles")||"[]");if(!Array.isArray(saved))saved=[]}catch{saved=[]}if(!saved.length){grid.innerHTML=emptyState("??","Nothing saved yet","Tap ? Save on a story to keep it here.");return}grid.innerHTML=saved.map(createNewsCard).join("")}
-function timeAgo(dateValue){if(!dateValue)return"Recently";const date=new Date(dateValue);if(Number.isNaN(date.getTime()))return"Recently";let diffMs=Date.now()-date.getTime();if(diffMs<0)diffMs=0;const minutes=Math.floor(diffMs/60000);if(minutes<1)return"Just now";if(minutes<60)return`${minutes} minute${minutes===1?"":"s"} ago`;const hours=Math.floor(minutes/60);if(hours<24)return`${hours} hour${hours===1?"":"s"} ago`;const days=Math.floor(hours/24);if(days===1)return"Yesterday";if(days<7)return`${days} days ago`;return date.toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"})}
-const fallbackImages={technology:"https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=900&q=80",tech:"https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=900&q=80",science:"https://images.unsplash.com/photo-1532094349884-543bc11b234d?auto=format&fit=crop&w=900&q=80",space:"https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?auto=format&fit=crop&w=900&q=80",sports:"https://images.unsplash.com/photo-1461896836934-ffe607ba8211?auto=format&fit=crop&w=900&q=80",gaming:"https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=900&q=80",entertainment:"https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&w=900&q=80",business:"https://images.unsplash.com/photo-1556761175-b413da4baf72?auto=format&fit=crop&w=900&q=80",finance:"https://images.unsplash.com/photo-1559526324-593bc073d938?auto=format&fit=crop&w=900&q=80",career:"https://images.unsplash.com/photo-1521737711867-e3b97375f902?auto=format&fit=crop&w=900&q=80",education:"https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=900&q=80",jobs:"https://images.unsplash.com/photo-1521737711867-e3b97375f902?auto=format&fit=crop&w=900&q=80",politics:"https://images.unsplash.com/photo-1529107386315-e1a2ed48a620?auto=format&fit=crop&w=900&q=80",startup:"https://images.unsplash.com/photo-1556761175-4b46a572b786?auto=format&fit=crop&w=900&q=80",health:"https://images.unsplash.com/photo-1505751172876-fa1923c5c528?auto=format&fit=crop&w=900&q=80",general:"https://images.unsplash.com/photo-1504711434969-e33886168f5c?auto=format&fit=crop&w=900&q=80"};function normalizeArticle(article,index){if(!article||typeof article!=="object")return null;const title=article.title||article.headline||article.name||"Untitled story";const description=article.description||article.summary||article.excerpt||article.content||"No description available.";const content=article.content||description;const url=safeUrl(article.url||article.link||article.articleUrl||"");const publishedAt=article.publishedAt||article.published_at||article.date||article.published||article.createdAt||"";const sourceName=getSourceName(article);const category=normalizeCategory(article);const id=String(article.id||article.guid||article.url||`${title}-${index}`);const key=String(category).toLowerCase();const supplied=safeUrl(article.image||article.imageUrl||article.urlToImage||article.thumbnail||"");const image=supplied||fallbackImages[key]||fallbackImages.general;return {...article,id,title:String(title),description:String(description).replace(/\s+/g," ").trim(),content:String(content),url,image,publishedAt,source:{name:String(sourceName)},category}}
-
-state.flashCategory="All";function renderFlashFilters(){const header=document.querySelector("#flashView .page-header");if(!header)return;let bar=document.getElementById("flashFilterBar");if(!bar){bar=document.createElement("div");bar.id="flashFilterBar";bar.style.cssText="display:flex;gap:8px;flex-wrap:wrap;margin-top:18px;overflow-x:auto;padding-bottom:4px;";header.appendChild(bar)}bar.innerHTML=["All",...availableCategories].map(c=>`<button type="button" class="interest-btn ${state.flashCategory===c?"active":""}" data-flash-category="${escapeHtml(c)}">${escapeHtml(c)}</button>`).join("")}function renderFlash(){const grid=$("#flashNewsGrid");if(!grid)return;renderFlashFilters();const articles=state.flashCategory==="All"?state.articles:state.articles.filter(a=>categoryKey(normalizeCategory(a))===categoryKey(state.flashCategory));if(!articles.length){grid.innerHTML=emptyState("","No stories in this category","Try another topic or select All.");return}grid.innerHTML=articles.map(createNewsCard).join("")}document.addEventListener("click",function(e){const b=e.target.closest("[data-flash-category]");if(!b)return;e.preventDefault();state.flashCategory=b.dataset.flashCategory||"All";renderFlash()},true)
 
