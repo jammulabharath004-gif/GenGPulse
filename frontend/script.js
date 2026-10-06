@@ -1547,6 +1547,244 @@ function currentHomeArticles() {
 }
 
 
+/* =========================================================
+   GLOBAL UNIQUE FEED ENGINE
+========================================================= */
+
+function feedText(value) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/https?:\/\/\S+/g, " ")
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function feedWords(value) {
+
+  const stopWords = new Set([
+    "the","a","an","and","or","of","to","in","on",
+    "for","with","from","at","by","is","are","was",
+    "were","this","that","as","into","after","before",
+    "over","new","news","india"
+  ]);
+
+  return new Set(
+    feedText(value)
+      .split(" ")
+      .filter(
+        word =>
+          word.length > 2 &&
+          !stopWords.has(word)
+      )
+  );
+}
+
+function feedSimilarity(a, b) {
+
+  const wordsA =
+    feedWords(a.title);
+
+  const wordsB =
+    feedWords(b.title);
+
+  if (
+    !wordsA.size ||
+    !wordsB.size
+  ) {
+    return 0;
+  }
+
+  let intersection = 0;
+
+  wordsA.forEach(
+    word => {
+      if (wordsB.has(word)) {
+        intersection++;
+      }
+    }
+  );
+
+  const union =
+    new Set([
+      ...wordsA,
+      ...wordsB
+    ]).size;
+
+  return union
+    ? intersection / union
+    : 0;
+}
+
+function uniqueFeedArticles(
+  articles = [],
+  limit = 12,
+  options = {}
+) {
+
+  const result = [];
+
+  const seenIds =
+    new Set();
+
+  const seenUrls =
+    new Set();
+
+  const seenTitles =
+    new Set();
+
+  const similarityThreshold =
+    options.similarityThreshold || 0.65;
+
+  articles
+    .map(
+      (article, index) =>
+        normalizeArticle(
+          article,
+          index
+        )
+    )
+    .filter(Boolean)
+    .forEach(
+      article => {
+
+        const id =
+          feedText(
+            article.id
+          );
+
+        const url =
+          feedText(
+            article.url
+          );
+
+        const title =
+          feedText(
+            article.title
+          );
+
+        if (
+          id &&
+          seenIds.has(id)
+        ) {
+          return;
+        }
+
+        if (
+          url &&
+          seenUrls.has(url)
+        ) {
+          return;
+        }
+
+        if (
+          title &&
+          seenTitles.has(title)
+        ) {
+          return;
+        }
+
+        const similar =
+          result.some(
+            existing =>
+              feedSimilarity(
+                existing,
+                article
+              ) >=
+              similarityThreshold
+          );
+
+        if (similar) {
+          return;
+        }
+
+        if (id) {
+          seenIds.add(id);
+        }
+
+        if (url) {
+          seenUrls.add(url);
+        }
+
+        if (title) {
+          seenTitles.add(title);
+        }
+
+        result.push(
+          article
+        );
+      }
+    );
+
+  return result.slice(
+    0,
+    limit
+  );
+}
+
+function articleKey(article) {
+
+  const normalized =
+    normalizeArticle(
+      article
+    );
+
+  if (!normalized) {
+    return "";
+  }
+
+  return (
+    feedText(
+      normalized.url
+    ) ||
+    feedText(
+      normalized.id
+    ) ||
+    feedText(
+      normalized.title
+    )
+  );
+}
+
+function getUniqueFeed(
+  articles,
+  limit = 12,
+  options = {}
+) {
+
+  return uniqueFeedArticles(
+    articles,
+    limit,
+    options
+  );
+}
+
+function excludeFeedArticles(
+  articles,
+  excludedArticles = []
+) {
+
+  const excludedKeys =
+    new Set(
+      excludedArticles
+        .map(articleKey)
+        .filter(Boolean)
+    );
+
+  return articles.filter(
+    article =>
+      !excludedKeys.has(
+        articleKey(
+          article
+        )
+      )
+  );
+}
+
+/* =========================================================
+   END GLOBAL UNIQUE FEED ENGINE
+========================================================= */
+
 function renderHome() {
 
   const grid =
@@ -1557,8 +1795,10 @@ function renderHome() {
   }
 
   const articles =
-    currentHomeArticles();
-
+    getUniqueFeed(
+      currentHomeArticles(),
+      12
+    );
   grid.innerHTML =
     articles.length
       ? articles
@@ -1632,7 +1872,7 @@ function renderFlash() {
       .trim()
       .toLowerCase();
 
-  const articles =
+  const filteredArticles =
     state.articles.filter(
       article =>
         (
@@ -1658,6 +1898,12 @@ function renderFlash() {
         )
     );
 
+  const articles =
+    getUniqueFeed(
+      filteredArticles,
+      12
+    );
+
   grid.innerHTML =
     articles.length
       ? articles
@@ -1670,7 +1916,6 @@ function renderFlash() {
           "Try another search or category."
         );
 }
-
 
 /* =========================================================
    REAL NEWS SEARCH
@@ -1897,9 +2142,15 @@ function renderExplain() {
     return;
   }
 
+  const articles =
+    getUniqueFeed(
+      state.articles,
+      12
+    );
+
   grid.innerHTML =
-    state.articles.length
-      ? state.articles
+    articles.length
+      ? articles
           .map(
             createNewsCard
           )
@@ -1909,7 +2160,6 @@ function renderExplain() {
           "Stories will appear here when news is available."
         );
 }
-
 
 /* =========================================================
    EXCITE
@@ -2113,7 +2363,7 @@ const exciteSeedArticles = [
 
 function getExciteArticles() {
 
-  return [
+  const combinedArticles = [
     ...exciteSeedArticles.map(
       article => ({
         ...article,
@@ -2126,13 +2376,13 @@ function getExciteArticles() {
     .map(
       normalizeArticle
     )
-    .filter(Boolean)
-    .slice(
-      0,
-      6
-    );
-}
+    .filter(Boolean);
 
+  return getUniqueFeed(
+    combinedArticles,
+    6
+  );
+}
 
 function renderExcite() {
 
@@ -2160,7 +2410,7 @@ function renderExcite() {
    OPPORTUNITIES
 ========================================================= */
 
-function renderOpportunities() {
+async function renderOpportunities() {
 
   const grid =
     $("#opportunityGrid");
@@ -2169,109 +2419,486 @@ function renderOpportunities() {
     return;
   }
 
-  grid.innerHTML =
-    opportunityData
-      .map(
+  /*
+   * Show loading state
+   */
+  grid.innerHTML = `
+    <div class="loading-state">
+      Loading live opportunities...
+    </div>
+  `;
+
+  try {
+
+    /*
+     * Get live opportunities from backend
+     */
+    const response =
+      await fetch(
+        `${API_BASE}/api/opportunities`
+      );
+
+    if (!response.ok) {
+      throw new Error(
+        `HTTP ${response.status}`
+      );
+    }
+
+    const data =
+      await response.json();
+
+    if (
+      !data ||
+      !data.success ||
+      !Array.isArray(
+        data.opportunities
+      )
+    ) {
+      throw new Error(
+        "Invalid opportunities response"
+      );
+    }
+
+    /*
+     * Remove exact duplicate opportunities
+     */
+    const seen =
+      new Set();
+
+    const opportunities =
+      data.opportunities.filter(
         item => {
 
-          const article =
-            findArticle(
-              item.article
-            ) ||
-            fallbackArticles[0];
+          const key =
+            String(
+              item.title ||
+              item.url ||
+              item.id ||
+              ""
+            )
+              .toLowerCase()
+              .trim();
 
-          return `
-            <article
-              class="opportunity-card ${item.type
-                .toLowerCase()
-                .split(" ")[0]}"
-            >
+          if (!key) {
+            return false;
+          }
 
-              <div class="opportunity-icon">
-                ${item.icon}
-              </div>
+          if (seen.has(key)) {
+            return false;
+          }
 
-              <span class="opportunity-type">
-                ${escapeHtml(
-                  item.type
-                )}
-              </span>
+          seen.add(key);
 
-              <h2>
-                ${escapeHtml(
-                  item.title
-                )}
-              </h2>
+          return true;
+        }
+      );
 
-              <p>
-                ${escapeHtml(
-                  item.description
-                )}
-              </p>
+    /*
+     * No opportunities
+     */
+    if (!opportunities.length) {
 
-              <div class="opportunity-meta">
+      grid.innerHTML = `
+        <div class="empty-state">
+          <strong>
+            No live opportunities found
+          </strong>
 
-                ${item.meta
-                  .map(
-                    meta =>
-                      `
+          <span>
+            Please check again shortly.
+          </span>
+        </div>
+      `;
+
+      return;
+    }
+
+    /*
+     * Render opportunity cards
+     */
+    grid.innerHTML =
+      opportunities
+        .map(
+          item => {
+
+            const type =
+              String(
+                item.type ||
+                item.category ||
+                "Opportunity"
+              );
+
+            /*
+             * Card class
+             */
+            let cardClass =
+              "opportunity";
+
+            if (
+              type ===
+              "Scholarship"
+            ) {
+              cardClass =
+                "scholarship";
+            }
+
+            if (
+              type ===
+              "Career & Internship"
+            ) {
+              cardClass =
+                "career";
+            }
+
+            if (
+              type ===
+              "Events & Hackathons"
+            ) {
+              cardClass =
+                "events";
+            }
+
+            /*
+             * Correct action label
+             */
+            let actionLabel =
+              item.actionLabel ||
+              "View Details";
+
+            if (
+              type ===
+              "Scholarship"
+            ) {
+              actionLabel =
+                "Apply";
+            }
+
+            if (
+              type ===
+              "Career & Internship"
+            ) {
+              actionLabel =
+                "Connect";
+            }
+
+            if (
+              type ===
+              "Events & Hackathons"
+            ) {
+              actionLabel =
+                "Attend";
+            }
+
+            /*
+             * Tags
+             */
+            const tags =
+              Array.isArray(
+                item.tags
+              )
+                ? item.tags
+                : [];
+
+            /*
+             * Published date
+             */
+            let publishedText =
+              "";
+
+            if (
+              item.publishedAt
+            ) {
+
+              const date =
+                new Date(
+                  item.publishedAt
+                );
+
+              if (
+                !Number.isNaN(
+                  date.getTime()
+                )
+              ) {
+                publishedText =
+                  date.toLocaleDateString(
+                    "en-IN",
+                    {
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric"
+                    }
+                  );
+              }
+            }
+
+            /*
+             * Eligibility
+             */
+            const eligibility =
+              item.eligibility ||
+              "Check the official opportunity requirements.";
+
+            /*
+             * Description
+             */
+            const description =
+              item.description ||
+              "Open the opportunity to learn more.";
+
+            /*
+             * Action URL
+             */
+            const actionUrl =
+              item.actionUrl ||
+              item.url ||
+              item.sourceUrl ||
+              "#";
+
+            /*
+             * AI article object
+             *
+             * This allows the existing AI buttons
+             * to work with the live opportunity.
+             */
+            const aiArticle = {
+              id:
+                item.id ||
+                `opportunity-${Date.now()}`,
+
+              title:
+                item.title || "",
+
+              description:
+                description,
+
+              content:
+                description,
+
+              url:
+                actionUrl,
+
+              source: {
+                name:
+                  item.source ||
+                  "Opportunity"
+              },
+
+              category:
+                type,
+
+              publishedAt:
+                item.publishedAt ||
+                ""
+            };
+
+            /*
+             * Store article temporarily so the
+             * existing AI system can find it.
+             */
+            if (
+              !Array.isArray(
+                state.articles
+              )
+            ) {
+              state.articles = [];
+            }
+
+            const existingIndex =
+              state.articles.findIndex(
+                article =>
+                  String(
+                    article.id
+                  ) ===
+                  String(
+                    aiArticle.id
+                  )
+              );
+
+            if (
+              existingIndex === -1
+            ) {
+
+              state.articles.push(
+                aiArticle
+              );
+
+            } else {
+
+              state.articles[
+                existingIndex
+              ] = aiArticle;
+            }
+
+            return `
+              <article
+                class="opportunity-card ${cardClass}"
+                data-opportunity-id="${escapeHtml(
+                  String(
+                    item.id || ""
+                  )
+                )}"
+              >
+
+                <div class="opportunity-icon">
+                  ${
+                    type ===
+                    "Scholarship"
+                      ? "🎓"
+                      : type ===
+                        "Career & Internship"
+                        ? "💼"
+                        : "🚀"
+                  }
+                </div>
+
+                <span
+                  class="opportunity-type"
+                >
+                  ${escapeHtml(
+                    type
+                  )}
+                </span>
+
+                <h2>
+                  ${escapeHtml(
+                    item.title ||
+                    "Opportunity"
+                  )}
+                </h2>
+
+                <p>
+                  ${escapeHtml(
+                    description
+                  )}
+                </p>
+
+                <div
+                  class="opportunity-meta"
+                >
+
+                  ${
+                    tags.length
+                      ? tags
+                          .map(
+                            tag =>
+                              `
+                                <span>
+                                  ${escapeHtml(
+                                    tag
+                                  )}
+                                </span>
+                              `
+                          )
+                          .join("")
+                      : ""
+                  }
+
+                  ${
+                    publishedText
+                      ? `
                         <span>
                           ${escapeHtml(
-                            meta
+                            publishedText
                           )}
                         </span>
                       `
-                  )
-                  .join("")}
+                      : ""
+                  }
 
-              </div>
+                </div>
 
-              <div class="opportunity-tools">
-
-                <button
-                  class="ai-btn"
-                  data-id="${escapeHtml(
-                    article.id
-                  )}"
-                  data-ai-type="summary"
-                  type="button"
+                <div
+                  class="opportunity-details"
                 >
-                  AI Summary
-                </button>
 
-                <button
-                  class="ai-btn"
-                  data-id="${escapeHtml(
-                    article.id
-                  )}"
-                  data-ai-type="explain"
-                  type="button"
+                  <div>
+                    <strong>
+                      Eligibility
+                    </strong>
+
+                    <span>
+                      ${escapeHtml(
+                        eligibility
+                      )}
+                    </span>
+                  </div>
+
+                </div>
+
+                <div
+                  class="opportunity-tools"
                 >
-                  AI Explanation
-                </button>
 
-                <a
-                  class="opportunity-btn"
-                  href="${escapeHtml(
-                    item.url
-                  )}"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  ${escapeHtml(
-                    item.action
-                  )} â†’
-                </a>
+                  <button
+                    class="ai-btn"
+                    data-id="${escapeHtml(
+                      String(
+                        aiArticle.id
+                      )
+                    )}"
+                    data-ai-type="summary"
+                    type="button"
+                  >
+                    AI Summary
+                  </button>
 
-              </div>
+                  <button
+                    class="ai-btn"
+                    data-id="${escapeHtml(
+                      String(
+                        aiArticle.id
+                      )
+                    )}"
+                    data-ai-type="explain"
+                    type="button"
+                  >
+                    AI Explanation
+                  </button>
 
-            </article>
-          `;
-        }
-      )
-      .join("");
+                  <a
+                    class="opportunity-btn"
+                    href="${escapeHtml(
+                      actionUrl
+                    )}"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    ${escapeHtml(
+                      actionLabel
+                    )}
+                    →
+                  </a>
+
+                </div>
+
+              </article>
+            `;
+          }
+        )
+        .join("");
+
+  } catch (error) {
+
+    console.error(
+      "Opportunities loading error:",
+      error
+    );
+
+    grid.innerHTML = `
+      <div class="empty-state">
+
+        <strong>
+          Unable to load opportunities
+        </strong>
+
+        <span>
+          Please try again in a moment.
+        </span>
+
+      </div>
+    `;
+  }
 }
-
 
 /* =========================================================
    SAVED
@@ -5531,6 +6158,12 @@ document.addEventListener(
   "DOMContentLoaded",
   init
 );
+
+
+
+
+
+
 
 
 
