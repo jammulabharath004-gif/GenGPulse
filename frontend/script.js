@@ -13,7 +13,7 @@
    - Blindspot
 ========================================================= */
 
-const API_BASE = "https://gen-z-pulse-backend.onrender.com";
+const API_BASE = "https://gengpulse-1.onrender.com";
 
 const NEWS_API = `${API_BASE}/api/news`;
 const AI_ANALYZE_API = `${API_BASE}/api/analyze-news`;
@@ -6158,6 +6158,7 @@ document.addEventListener(
   "DOMContentLoaded",
   init
 );
+
 
 
 
